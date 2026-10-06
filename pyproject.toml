@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "morocco-retail-intelligence"
+version = "0.1.0"
+description = "Morocco Retail Intelligence Data Platform - end-to-end batch data engineering, data warehouse and BI platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pandas>=2.2,<3",
+    "pyarrow>=14",
+    "sqlalchemy>=2.0,<2.2",
+    "psycopg[binary]>=3.1,<4",
+    "great-expectations>=1.0,<2",
+    "dbt-core>=1.12,<2",
+    "dbt-postgres>=1.11,<2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "ruff>=0.9,<1",
+    "mypy>=1.8,<3",
+    "pandas-stubs>=2.2,<3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mri"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+ignore_missing_imports = true
+files = ["src", "tests", "apps"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

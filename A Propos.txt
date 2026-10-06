@@ -1,0 +1,127 @@
+Morocco Retail Intelligence Data Platform
+
+Sous-titre :
+
+End-to-End Batch Data Engineering, Data Warehouse & Business Intelligence Platform
+
+Le projet simule une entreprise marocaine de retail/distribution disposant de plusieurs magasins, d'un canal e-commerce, de clients, de produits, de promotions, de stocks et d'achats.
+
+Le contexte marocain permettra d'intégrer des dimensions intéressantes comme :
+
+régions marocaines ;
+calendrier ;
+jours fériés ;
+saisonnalité ;
+météo ;
+devise MAD ;
+données externes ;
+éventuellement Ramadan/Aïd comme attributs calendaires.
+
+La bibliothèque Python holidays prend en charge de nombreux pays, dont le Maroc, ce qui peut être exploité pour construire dim_date.
+
+Objectif réel
+
+Le projet ne sera pas présenté comme :
+
+« un script ETL qui charge des CSV ».
+
+Il sera présenté comme :
+
+une plateforme Data Engineering complète permettant d'ingérer, valider, historiser, transformer, stocker, orchestrer et analyser des données commerciales provenant de sources hétérogènes.
+
+La chaîne principale sera :
+
+Sources
+   ↓
+Ingestion
+   ↓
+Object Storage
+   ↓
+Bronze
+   ↓
+Validation / Cleaning
+   ↓
+Silver
+   ↓
+dbt
+   ↓
+Data Warehouse
+   ↓
+Star Schema
+   ↓
+Data Marts
+   ↓
+BI
+
+avec Airflow qui pilotera progressivement l'ensemble.
+
+Sources de données
+
+Tu as choisi un modèle hybride.
+
+Source A — fichiers
+
+CSV / JSON
+
+Exemples :
+
+sales
+customers
+products
+stores
+inventory
+purchases
+promotions
+
+Ces fichiers pourront être générés par notre propre générateur synthétique et/ou alimentés par des données publiques.
+
+Source B — météo
+
+Je recommande Open-Meteo.
+
+Il fournit des données météo historiques et prévisionnelles, sans clé API pour les usages gratuits non commerciaux, avec notamment des données historiques remontant très loin dans le temps. Il propose aussi plusieurs formats et des requêtes multi-localisations.
+
+Cela donnera :
+
+Open-Meteo
+   ↓
+weather ingestion
+   ↓
+raw/weather/
+   ↓
+dim/fact weather data
+
+On devra toutefois mettre en cache les réponses localement afin que les tests et les re-exécutions ne dépendent pas de la disponibilité de l'API.
+
+Source C — taux de change
+
+Je recommande Frankfurter.
+
+Son API publique fournit des taux de change historiques et actuels, sans clé API, avec des données provenant notamment de banques centrales ; elle permet aussi de demander explicitement les données d'un fournisseur comme la BCE.
+
+Nous pourrons par exemple utiliser :
+
+EUR/MAD
+USD/MAD
+GBP/MAD
+
+pour enrichir certains coûts/imports.
+
+Source D — catalogue produit
+
+Pour le catalogue, je recommande Open Food Facts, car ton contexte est orienté retail/food et l'API fournit des informations structurées sur des produits ; leur API v3 est actuellement la version recommandée pour les nouvelles intégrations et les lectures sont disponibles sans authentification.
+
+Important : ces données externes ne remplaceront pas notre modèle métier interne.
+
+Nous ferons :
+
+Open Food Facts
+       ↓
+External Product Data
+       ↓
+Mapping / Normalization
+       ↓
+Internal Product Dimension
+
+C'est beaucoup plus réaliste qu'un simple import direct.
+
