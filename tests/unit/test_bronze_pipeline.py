@@ -275,3 +275,25 @@ def test_manifest_records_every_outcome_bucket(tmp_path: Path) -> None:
     assert result.records[0].contract_version == CONTRACTS["regions"].version
     assert result.records[0].input_bytes == len(csv_bytes("regions", [region_row()]))
     assert DEFAULT_TAG in result.records[0].raw_key
+
+
+def test_valid_batch_is_promoted_even_when_sibling_fails(tmp_path: Path) -> None:
+    pipeline, settings, store = _pipeline(tmp_path)
+    good_key = seed_raw(store, settings, "sales", [sales_row()], tag="good000000000001")
+    bad_key = seed_raw(
+        store, settings, "sales", [sales_row(sale_id="S2", quantity="-5")], tag="bad000000000002"
+    )
+
+    result = pipeline.run(sources=["sales"])
+
+    by_key = {record.raw_key: record for record in result.records}
+    assert good_key in by_key
+    assert bad_key in by_key
+    assert by_key[good_key].promoted is True
+    assert by_key[good_key].outcome == "bronzed"
+    assert by_key[good_key].quality_status == "passed"
+    assert by_key[bad_key].promoted is False
+    assert by_key[bad_key].outcome == "failed"
+    assert by_key[bad_key].quality_status == "failed"
+    promoted = [record for record in result.records if record.raw_key == good_key]
+    assert promoted and promoted[0].promoted

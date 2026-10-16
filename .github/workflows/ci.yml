@@ -29,7 +29,10 @@
 #   6. Docker: compose syntax is validated for all four files (base, Airflow,
 #      Superset, observability) on every run; images are built ONLY for the
 #      three project-owned images (mri-airflow, mri-superset, mri-metrics).
-#      Heavy asset builds never touch the lint/unit jobs.
+#      Heavy asset builds never touch the lint/unit jobs. Builds go through a
+#      Buildx `docker-container` builder (setup-buildx-action), which is
+#      required for the GitHub Actions cache backend; each image uses its own
+#      cache scope so the three builds never overwrite each other's layers.
 #
 #   7. Observability: the Phase 16 audit/logging suite is fully offline and
 #      runs in the unit job (the dedicated "Audit + observability gate" step
@@ -37,6 +40,10 @@
 #      The Phase 19 Prometheus/Grafana assets are validated offline too — the
 #      "Prometheus + Grafana gate" asserts every dashboard/alert references a
 #      metric the exporter actually emits, and the docker job runs promtool.
+#
+#   8. Runner: jobs are pinned to `ubuntu-24.04` instead of `ubuntu-latest`,
+#      so the announced `ubuntu-latest` migration to Ubuntu 26 (2026-10-19)
+#      cannot change the toolchain under the pipeline unannounced.
 
 name: CI
 
@@ -59,7 +66,7 @@ env:
 jobs:
   lint:
     name: Lint (ruff)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +86,7 @@ jobs:
 
   typecheck:
     name: Typecheck (mypy)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +104,7 @@ jobs:
 
   unit:
     name: Unit tests (pytest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -135,7 +142,7 @@ jobs:
 
   integration-postgres:
     name: "Integration (PostgreSQL: Silver + warehouse + incremental dbt)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     services:
       postgres:
@@ -177,7 +184,7 @@ jobs:
 
   dbt:
     name: dbt CI (debug, parse, build on temporary Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -220,7 +227,7 @@ jobs:
 
   minio-integration:
     name: "Integration (MinIO: ingestion + bronze + external)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       MINIO_ENDPOINT: http://localhost:9000
@@ -267,7 +274,7 @@ jobs:
 
   airflow-dag:
     name: Airflow DAG validation (static, no cluster)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -283,7 +290,7 @@ jobs:
 
   docker:
     name: Docker (compose config + project-owned images)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -313,6 +320,9 @@ jobs:
             -v "$PWD/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/monitoring/prometheus/rules:/etc/prometheus/rules:ro" \
             prom/prometheus:v3.13.4 check config /etc/prometheus/prometheus.yml
+      # The default `docker` driver cannot export a GHA build cache.
+      - name: Set up Docker Buildx (docker-container driver)
+        uses: docker/setup-buildx-action@v3
       - name: Build project-owned Airflow image
         uses: docker/build-push-action@v6
         with:
@@ -320,8 +330,8 @@ jobs:
           file: infrastructure/docker/Dockerfile.airflow
           push: false
           tags: mri-airflow:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=airflow
+          cache-to: type=gha,mode=max,scope=airflow
       - name: Build project-owned Superset image
         uses: docker/build-push-action@v6
         with:
@@ -329,8 +339,8 @@ jobs:
           file: infrastructure/docker/Dockerfile.superset
           push: false
           tags: mri-superset:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=superset
+          cache-to: type=gha,mode=max,scope=superset
       - name: Build project-owned metrics exporter image
         uses: docker/build-push-action@v6
         with:
@@ -338,5 +348,5 @@ jobs:
           file: infrastructure/docker/Dockerfile.metrics
           push: false
           tags: mri-metrics:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=metrics
+          cache-to: type=gha,mode=max,scope=metrics

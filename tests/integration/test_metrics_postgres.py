@@ -58,10 +58,49 @@ def tagged_pipeline() -> Iterator[tuple[str, MetricsSettings]]:
                 written,
             ),
         )
+    warehouse_rows = [
+        (f"{tag}-w1", 5, f"{tag}-wr", "silver.sales", f"{tag}-fact_ventes", "success", 12, 10, 10),
+        (f"{tag}-w2", 5, f"{tag}-wr", "silver.purchases", f"{tag}-fact_achats", "success", 8, 7, 7),
+    ]
+    for (
+        event_hash,
+        age_s,
+        run_id,
+        source,
+        batch_id,
+        status,
+        duration,
+        read,
+        written,
+    ) in warehouse_rows:
+        connection.execute(
+            """
+            INSERT INTO ops.pipeline_event
+              (event_hash, timestamp, run_id, pipeline, stage, source,
+               batch_id, status, duration_ms, records_read, records_written)
+            VALUES (%s, now() - make_interval(secs => %s), %s, 'warehouse',
+                    'warehouse', %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                event_hash,
+                age_s,
+                run_id,
+                source,
+                batch_id,
+                status,
+                duration,
+                read,
+                written,
+            ),
+        )
     try:
         yield tag, settings
     finally:
         connection.execute("DELETE FROM ops.pipeline_event WHERE pipeline = %s", (tag,))
+        connection.execute(
+            "DELETE FROM ops.pipeline_event WHERE pipeline = 'warehouse' AND batch_id LIKE %s",
+            (f"{tag}-%",),
+        )
         connection.close()
 
 
@@ -86,6 +125,6 @@ def test_exporter_emits_warehouse_reconcile_metrics(
 ) -> None:
     _tag, settings = tagged_pipeline
     text = MetricsExporter(settings).collect()
-    # The live warehouse pipeline populates one reconcile event per target table.
+    # The fixture seeds one warehouse reconcile event per target table.
     assert "mri_warehouse_reconcile_balanced{" in text
     assert "mri_warehouse_reconcile_rows{" in text

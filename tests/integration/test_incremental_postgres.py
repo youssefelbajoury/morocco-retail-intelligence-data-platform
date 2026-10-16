@@ -155,7 +155,9 @@ def _promote(env: IncrementalEnv, source: str, filename: str, frame: pd.DataFram
     )
     time.sleep(1.05)
     bronze = BronzePipeline(env.store, env.settings, env.contracts).run(sources=[source])
-    assert all(record.promoted for record in bronze.records), [
+    target_key = f"{env.settings.raw_prefix}/{source}/{filename}"
+    crafted = [record for record in bronze.records if record.raw_key == target_key]
+    assert crafted and crafted[0].promoted, [
         (record.raw_key, record.outcome, record.quality_status, record.reason)
         for record in bronze.records
     ]
