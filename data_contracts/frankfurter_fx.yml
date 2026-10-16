@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# Data contract: frankfurter_fx
+# External source: Frankfurter API (ECB reference rates), stored verbatim
+# under raw_external/ by `apps.ingestion external` (Phase 05) and flattened
+# into Bronze rows by src/mri/ingestion/external_bronze.py (Phase 07).
+# One row = one (date, base, quote) reference rate.
+# ---------------------------------------------------------------------------
+id: frankfurter_fx
+version: 1.0.0
+owner: external-api
+source: "Frankfurter API - ECB reference rates (https://api.frankfurter.dev/v2/rates)"
+description: "EUR reference exchange rates against MAD, USD and GBP (raw response normalized to flat rows)."
+format:
+  types: [json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [date, base, quote]
+  business: []
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: date, type: date, required: true, nullable: false, description: "Rate validity day (ISO-8601 yyyy-mm-dd)"}
+  - {name: base, type: string, required: true, nullable: false, description: "Base currency, always EUR"}
+  - {name: quote, type: string, required: true, nullable: false, description: "Quote currency: MAD, USD or GBP"}
+  - {name: rate, type: number, required: true, nullable: false, description: "ECB reference rate (base units per quote unit), > 0"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06/07).
+  declared:
+    - "date, base and quote are unique and not null"
+    - "date between 1999-01-01 and 2100-12-31"
+    - "base in {EUR}"
+    - "quote in {GBP, MAD, USD}"
+    - "rate > 0"
+sla:
+  consumers: [bronze, staging]

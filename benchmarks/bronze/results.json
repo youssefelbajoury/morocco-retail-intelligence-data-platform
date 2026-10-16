@@ -1,0 +1,48 @@
+[
+  {
+    "timestamp": "2026-10-07T11:51:46+00:00",
+    "scale": "small",
+    "dry_run": false,
+    "batches": 10,
+    "counts": {
+      "bronzed": 10,
+      "already_bronzed": 0,
+      "failed": 0,
+      "planned": 0
+    },
+    "quality": {
+      "passed": 10,
+      "failed": 0
+    },
+    "rows_in": 126348,
+    "rows_kept": 126348,
+    "rows_rejected": 0,
+    "input_bytes": 8762179,
+    "output_bytes": 3821363,
+    "elapsed_seconds": 22.224,
+    "rows_per_second": 5685.3
+  },
+  {
+    "timestamp": "2026-10-07T11:56:45+00:00",
+    "scale": "medium",
+    "dry_run": false,
+    "batches": 10,
+    "counts": {
+      "bronzed": 10,
+      "already_bronzed": 0,
+      "failed": 0,
+      "planned": 0
+    },
+    "quality": {
+      "passed": 10,
+      "failed": 0
+    },
+    "rows_in": 1397019,
+    "rows_kept": 1397019,
+    "rows_rejected": 0,
+    "input_bytes": 92708481,
+    "output_bytes": 23623451,
+    "elapsed_seconds": 134.025,
+    "rows_per_second": 10423.6
+  }
+]

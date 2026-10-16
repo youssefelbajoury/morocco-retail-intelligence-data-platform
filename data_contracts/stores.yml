@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# Data contract: stores
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: stores
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Retail stores, each belonging to one Moroccan region."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [store_id]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: store_id, type: string, required: true, nullable: false, description: "Store code, e.g. ST001"}
+  - {name: store_name, type: string, required: true, nullable: false, description: "Store name"}
+  - {name: city, type: string, required: true, nullable: false, description: "City name"}
+  - {name: region_id, type: string, required: true, nullable: false, description: "FK -> regions.region_id"}
+  - {name: store_format, type: string, required: true, nullable: false, description: "One of: hypermarket, supermarket, convenience, cash_and_carry"}
+  - {name: size_sqm, type: integer, required: true, nullable: false, description: "Selling surface in square metres"}
+  - {name: open_date, type: date, required: true, nullable: false, description: "Opening date (ISO-8601 yyyy-mm-dd)"}
+  - {name: is_active, type: boolean, required: true, nullable: false, description: "Active-store flag"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "store_id is unique and not null"
+    - "size_sqm > 0"
+    - "open_date <= 2024-12-31"
+    - "region_id exists in regions"
+sla:
+  consumers: [bronze, staging]

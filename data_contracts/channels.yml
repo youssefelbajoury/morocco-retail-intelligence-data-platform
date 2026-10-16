@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Data contract: channels
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: channels
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Sales channels (physical stores, e-commerce, mobile app)."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [channel_id]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: channel_id, type: string, required: true, nullable: false, description: "Channel code, e.g. CH01"}
+  - {name: channel_name, type: string, required: true, nullable: false, description: "Human-readable channel name"}
+  - {name: channel_type, type: string, required: true, nullable: false, description: "One of: physical, digital"}
+  - {name: demand_weight, type: number, required: true, nullable: false, description: "Normalised demand weight in [0, 1]"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "channel_id is unique and not null"
+    - "channel_type in {physical, digital}"
+    - "demand_weight is between 0 and 1"
+sla:
+  consumers: [bronze, staging]

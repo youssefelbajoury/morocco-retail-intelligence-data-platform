@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# Data contract: products
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: products
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Product catalogue with cost, price and margin."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [product_id]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: product_id, type: string, required: true, nullable: false, description: "Product code, e.g. P000001"}
+  - {name: product_name, type: string, required: true, nullable: false, description: "Product display name"}
+  - {name: category, type: string, required: true, nullable: false, description: "Top-level category"}
+  - {name: subcategory, type: string, required: true, nullable: false, description: "Subcategory"}
+  - {name: brand, type: string, required: true, nullable: false, description: "Brand name"}
+  - {name: unit_cost_mad, type: number, required: true, nullable: false, description: "Unit cost in MAD (> 0)"}
+  - {name: unit_price_mad, type: number, required: true, nullable: false, description: "Unit price in MAD (>= cost)"}
+  - {name: margin_pct, type: number, required: true, nullable: false, description: "Gross margin ratio in [0, 1)"}
+  - {name: launch_date, type: date, required: true, nullable: false, description: "Launch date (ISO-8601 yyyy-mm-dd)"}
+  - {name: is_active, type: boolean, required: true, nullable: false, description: "Active-product flag"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "product_id is unique and not null"
+    - "unit_cost_mad > 0"
+    - "unit_price_mad >= unit_cost_mad"
+    - "margin_pct is between 0 and 1"
+    - "launch_date <= 2024-12-31"
+sla:
+  consumers: [bronze, staging]

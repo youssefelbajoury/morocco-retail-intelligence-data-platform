@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# Data contract: purchases
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: purchases
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Store replenishment receipts (store receiving products)."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [purchase_id]
+  business: []
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 0
+  max_rows: null
+columns:
+  - {name: purchase_id, type: string, required: true, nullable: false, description: "Purchase code, e.g. PU00000001"}
+  - {name: purchase_date, type: date, required: true, nullable: false, description: "Receipt date (ISO-8601 yyyy-mm-dd)"}
+  - {name: store_id, type: string, required: true, nullable: false, description: "FK -> stores.store_id"}
+  - {name: product_id, type: string, required: true, nullable: false, description: "FK -> products.product_id"}
+  - {name: quantity, type: integer, required: true, nullable: false, description: "Units received (>= 1)"}
+  - {name: unit_cost_mad, type: number, required: true, nullable: false, description: "Unit cost in MAD (> 0)"}
+  - {name: total_cost_mad, type: number, required: true, nullable: false, description: "Total cost in MAD (>= 0)"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "purchase_id is unique and not null"
+    - "quantity >= 1"
+    - "unit_cost_mad > 0"
+    - "total_cost_mad >= 0"
+    - "store_id exists in stores"
+    - "product_id exists in products"
+sla:
+  consumers: [bronze, staging]

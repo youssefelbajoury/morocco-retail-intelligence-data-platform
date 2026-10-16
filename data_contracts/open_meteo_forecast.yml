@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Data contract: open_meteo_forecast
+# External source: Open-Meteo Forecast API, stored verbatim under
+# raw_external/ by `apps.ingestion external` (Phase 05) and flattened into
+# Bronze rows by src/mri/ingestion/external_bronze.py (Phase 07).
+# One row = one forecast day for one project region.
+# ---------------------------------------------------------------------------
+id: open_meteo_forecast
+version: 1.0.0
+owner: external-api
+source: "Open-Meteo Forecast API (https://api.open-meteo.com/v1/forecast)"
+description: "Forward-looking daily weather per project region (raw response normalized to flat rows)."
+format:
+  types: [json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [region_id, forecast_date]
+  business: [city]
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: region_id, type: string, required: true, nullable: false, description: "Project region id from the request context, e.g. R01"}
+  - {name: region_name, type: string, required: true, nullable: false, description: "Official Moroccan region name"}
+  - {name: city, type: string, required: true, nullable: false, description: "Chief city the coordinates belong to"}
+  - {name: timezone, type: string, required: true, nullable: false, description: "Requested timezone, e.g. Africa/Casablanca"}
+  - {name: latitude, type: number, required: true, nullable: false, description: "WGS84 latitude of the requested location"}
+  - {name: longitude, type: number, required: true, nullable: false, description: "WGS84 longitude of the requested location"}
+  - {name: forecast_date, type: date, required: true, nullable: false, description: "Forecast day (ISO-8601 yyyy-mm-dd)"}
+  - {name: data_type, type: string, required: true, nullable: false, description: "Payload data type: forecast"}
+  - {name: retrieval_time, type: string, required: true, nullable: false, description: "metadata.retrieved_at of the raw response (ISO-8601)"}
+  - {name: weather_code, type: integer, required: true, nullable: true, description: "WMO weather code (null when the API omits the value)"}
+  - {name: temperature_2m_max, type: number, required: true, nullable: true, description: "Forecast maximum 2m temperature in degrees Celsius"}
+  - {name: temperature_2m_min, type: number, required: true, nullable: true, description: "Forecast minimum 2m temperature in degrees Celsius"}
+  - {name: precipitation_sum, type: number, required: true, nullable: true, description: "Forecast precipitation sum in mm"}
+  - {name: precipitation_hours, type: number, required: true, nullable: true, description: "Forecast hours with precipitation (0-24)"}
+  - {name: wind_speed_10m_max, type: number, required: true, nullable: true, description: "Forecast maximum 10m wind speed in km/h"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06/07).
+  declared:
+    - "region_id and forecast_date are unique and not null"
+    - "forecast_date between 1940-01-01 and 2100-12-31"
+    - "latitude between -90 and 90"
+    - "longitude between -180 and 180"
+    - "temperature_2m_max between -80 and 60"
+    - "temperature_2m_min between -80 and 60"
+    - "temperature_2m_max >= temperature_2m_min"
+    - "precipitation_sum >= 0"
+    - "precipitation_hours between 0 and 24"
+    - "wind_speed_10m_max >= 0"
+    - "weather_code between 0 and 99"
+    - "region_id exists in regions"
+sla:
+  consumers: [bronze, staging]

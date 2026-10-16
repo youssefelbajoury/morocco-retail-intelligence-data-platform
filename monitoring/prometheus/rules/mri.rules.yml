@@ -1,0 +1,63 @@
+# Morocco Retail Intelligence — Prometheus alerting rules (PHASE 19).
+#
+# These rules only reference metrics the mri-metrics exporter actually emits.
+# They are intentionally conservative (long `for:` windows) because the platform
+# is a batch pipeline: a run only happens a few times a day, so short windows
+# would flap.
+
+groups:
+  - name: mri-platform
+    rules:
+      - alert: MriExporterDown
+        expr: up{job="mri-metrics"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mri-metrics exporter is not scrapeable"
+          description: "Prometheus has failed to scrape the mri-metrics exporter for 2 minutes."
+
+      - alert: MriScrapeDegraded
+        expr: mri_exporter_last_scrape_success == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mri-metrics scrape degraded"
+          description: "The exporter could not query one of its sources; domain metrics may be missing."
+
+      - alert: MriPipelineLastRunFailed
+        expr: mri_pipeline_last_run_succeeded == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "latest pipeline run failed"
+          description: "{{ $labels.pipeline }}/{{ $labels.stage }} has a failing most-recent run."
+
+      - alert: MriDataStale
+        expr: mri_source_freshness_seconds > 172800
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "source data is stale"
+          description: "source {{ $labels.source }} has not produced a successful event in over 48h."
+
+      - alert: MriWarehouseUnbalanced
+        expr: mri_warehouse_reconcile_balanced == 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "warehouse reconciliation unbalanced"
+          description: "table {{ $labels.table }} did not reconcile (silver vs warehouse)."
+
+      - alert: MriAirflowTaskFailed
+        expr: mri_airflow_task_instances{state="failed"} > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Airflow task instances failed"
+          description: "DAG {{ $labels.dag_id }} has failed task instances."

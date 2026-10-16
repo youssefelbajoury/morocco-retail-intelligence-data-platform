@@ -119,7 +119,7 @@ docs.docker.com, postgresql.org).
 | mypy | **2.4.0** (`>=1.8,<3`) | Type checker (`ignore_missing_imports = true` for untyped libs such as pyarrow/dbt). |
 | pandas-stubs | **2.3.3.260113** (`>=2.2,<3`, dev) | Type stubs matching the selected pandas 2.3.x line. |
 | PostgreSQL (container) | **postgres:16-alpine** (planned, Phase 01) | Matches the native PostgreSQL **16.14** already present/running, and `postgres:16-alpine` already exists in the local Docker cache. Supported by Airflow 3.3 (PG 14–18), dbt and GX. |
-| MinIO (container) | official `minio/minio` image (planned, Phase 01) | Already present locally; a specific `RELEASE.*` tag will be pinned when the compose file is written. |
+| MinIO (container) | **Chainguard rebuild, digest-pinned** `cgr.dev/chainguard/minio@sha256:dc455c…f751e56` (`RELEASE.2026-09-22T19-25-18Z`) | MinIO no longer publishes Docker images (source-only); Docker Hub and Quay tags are gone. The Chainguard distribution is pullable, security-maintained and post CVE-2025-62506 — see ADR-001. Adopted as the default image in Phase 20. |
 | Apache Airflow (container) | **apache/airflow:3.3.2** (planned) | Latest **stable** release per official docs; supported Python 3.10–3.14, PostgreSQL 14–18. Containerized → official image + official constraints apply, **not** a host pip install. |
 | Apache Superset (container) | **apache/superset:6.0.0** (planned) | Latest official release referenced by the official quickstart (`git checkout tags/6.0.0`). Note: `lean` images ship **without** DB drivers → a `-dev` tag or a derived image with `psycopg2-binary`/`psycopg` is required to reach PostgreSQL. |
 | Docker Engine / Compose | 29.6.2 / v5.3.1 (existing) | Current Docker Desktop 4.85.0 bundled versions; `docker compose` (v2 plugin syntax) is the supported CLI. |
@@ -286,13 +286,15 @@ pending. Docker engine validated, Python 3.12 environment locked and import-veri
 | Service | Image (pinned) | Host → container | Volume |
 |---------|----------------|------------------|--------|
 | PostgreSQL | `postgres:16-alpine` | `localhost:5433` → `5432` | `mri-postgres-data` → `/var/lib/postgresql/data` |
-| MinIO | `minio/minio:RELEASE.2025-09-07T16-13-09Z` | `localhost:9000` → `9000`, `localhost:9001` → `9001` | `mri-minio-data` → `/data` |
+| MinIO | `cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56` (`RELEASE.2026-09-22T19-25-18Z`) | `localhost:9000` → `9000`, `localhost:9001` → `9001` | `mri-minio-data` → `/data` |
 
 - Network: `mri-net` (bridge). Containers reach each other as `postgres:5432` and
   `minio:9000` — **never** `localhost`.
 - PostgreSQL healthcheck: `pg_isready -U $POSTGRES_USER -d $POSTGRES_DB` (real
   readiness, not just process-up).
-- MinIO healthcheck: `curl -f http://localhost:9000/minio/health/live`.
+- MinIO healthcheck: bash `/dev/tcp` connect probe against `:9000` (the Chainguard
+  image has no `curl`/`wget`; the S3 port binds only once the server is up).
+  HTTP `GET /minio/health/live` is additionally exercised by the integration tests.
 
 ### 12.3 Commands (run from the repository root)
 
@@ -340,9 +342,11 @@ after `up` again both containers return `healthy` and `SELECT 1` succeeds.
 
 ### 12.6 Known limitation — MinIO image registry withdrawal
 
-MinIO removed its community images from Docker Hub (and Quay requires auth); the
-upstream repo is archived. The stack pins the last community release available in
-the local cache, `RELEASE.2025-09-07T16-13-09Z`. It runs and is healthy, but on a
-**clean machine** the image must be supplied first (copy the cache, build from
-source, or use a maintained fork). See
+MinIO removed its community images from Docker Hub (and Quay anonymous pulls now
+fail); the upstream repo is archived and community releases are source-only. This
+is why the stack default moved (Phase 20) to the maintained **Chainguard**
+rebuild, digest-pinned to `RELEASE.2026-09-22T19-25-18Z` (post CVE-2025-62506) —
+pullable on a clean machine. The previously used `minio/minio:RELEASE.2025-09-07`
+image is no longer obtainable from any public registry and was affected by
+CVE-2025-62506. See
 [`docs/decisions/ADR-001-local-container-foundation.md`](decisions/ADR-001-local-container-foundation.md).

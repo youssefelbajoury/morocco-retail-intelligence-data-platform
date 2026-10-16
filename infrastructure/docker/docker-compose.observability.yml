@@ -1,0 +1,142 @@
+# Morocco Retail Intelligence — OPTIONAL observability overlay (PHASE 19).
+#
+# This file is a composable OVERLAY: it never changes how the core stack is
+# started. Prometheus, Grafana and the metrics exporter ONLY start when the
+# `observability` profile is explicitly enabled. Combine it with the stack you
+# already run, e.g.:
+#
+#   # core + orchestration + observability
+#   docker compose --env-file .env \
+#     -f infrastructure/docker/docker-compose.yml \
+#     -f infrastructure/docker/docker-compose.airflow.yml \
+#     -f infrastructure/docker/docker-compose.observability.yml \
+#     --profile observability up -d
+#
+#   # observability only, on top of an already-running base network
+#   docker compose --env-file .env \
+#     -f infrastructure/docker/docker-compose.yml \
+#     -f infrastructure/docker/docker-compose.observability.yml \
+#     --profile observability up -d
+#
+# The exporter reads the SAME project-owned `ops` audit views the rest of the
+# platform writes (no competing source of truth). All images are pinned to
+# exact, verified tags — never `latest`.
+#
+#   metrics-exporter : mri-metrics:0.1.0   -> http://localhost:9245/metrics
+#   prometheus       : prom/prometheus:v3.13.4 -> http://localhost:9090
+#   grafana          : grafana/grafana:13.2.3  -> http://localhost:3000
+#
+# Resource footprint: ~0.5 GiB total (Prometheus capped at 1 GiB TSDB size).
+# Prometheus retention: 15 days OR 1 GiB, whichever is reached first.
+
+services:
+  metrics-exporter:
+    image: mri-metrics:0.1.0
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.metrics
+    container_name: mri-metrics-exporter
+    profiles: ["observability"]
+    restart: unless-stopped
+    environment:
+      MRI_METRICS_HOST: 0.0.0.0
+      MRI_METRICS_PORT: "9245"
+      # Retail warehouse (in-network service name, NOT localhost).
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-retail}
+      POSTGRES_USER: ${POSTGRES_USER:-retail_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-prefer}
+      # Airflow metadata DB (optional; metrics are skipped when unset). These
+      # are the same variables the Airflow overlay uses.
+      AIRFLOW_POSTGRES_HOST: airflow-postgres
+      AIRFLOW_POSTGRES_PORT: "5432"
+      AIRFLOW_POSTGRES_DB: ${AIRFLOW_POSTGRES_DB:-}
+      AIRFLOW_POSTGRES_USER: ${AIRFLOW_POSTGRES_USER:-}
+      AIRFLOW_POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD:-}
+    ports:
+      # Host-local only (loopback) — see docs/security/security-hardening.md.
+      - "127.0.0.1:${METRICS_PORT:-9245}:9245"
+    networks:
+      - mri
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9245/healthz', timeout=3).status==200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  prometheus:
+    image: prom/prometheus:v3.13.4
+    container_name: mri-prometheus
+    profiles: ["observability"]
+    restart: unless-stopped
+    depends_on:
+      metrics-exporter:
+        condition: service_started
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--storage.tsdb.retention.size=1GB"
+      - "--web.enable-lifecycle"
+    ports:
+      # Host-local only (loopback) — see docs/security/security-hardening.md.
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ../../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - mri
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    container_name: mri-grafana
+    profiles: ["observability"]
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_INSTALL_PLUGINS: ""
+    ports:
+      # Host-local only (loopback) — see docs/security/security-hardening.md.
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ../../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - mri
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  prometheus_data:
+    name: mri-prometheus-data
+  grafana_data:
+    name: mri-grafana-data
+
+# NOTE: the `mri` network is intentionally NOT redefined here. It is declared
+# in the base compose file and merged by key; always pass the base file too.

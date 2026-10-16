@@ -1,7 +1,20 @@
-# Observability Architecture (Future)
+# Observability Architecture
 
-> **Status: FUTURE / PLANNED — nothing in this document is implemented.**
-> `monitoring/prometheus/` and `monitoring/grafana/` exist as reserved directories only.
+> **Status: IMPLEMENTED.** The observability vision described here has been built:
+> structured audit logging + an `ops` metrics schema (Phase 16) and a Prometheus
+> + Grafana stack with a zero-dependency exporter (Phase 19).
+>
+> **What actually exists:**
+> - Structured audit events: [`docs/observability/audit-logging.md`](../observability/audit-logging.md)
+> - Prometheus exporter + Grafana dashboards:
+>   [`docs/observability/prometheus-grafana.md`](../observability/prometheus-grafana.md)
+> - Metric catalogue: [`docs/observability/metric-catalog.md`](../observability/metric-catalog.md)
+> - Decisions: [`ADR-013`](../decisions/ADR-013-observability.md) ·
+>   [`ADR-015`](../decisions/ADR-015-prometheus-grafana-observability.md)
+>
+> The design below is kept as the original target; the implemented metric names
+> are the `mri_*` series documented in the metric catalogue (not the illustrative
+> names shown here).
 
 ---
 
@@ -16,60 +29,60 @@ Make pipeline health visible and answerable:
 
 ---
 
-## Planned components
+## Implemented components
 
 ```mermaid
 flowchart LR
-    subgraph Platform["Platform containers (PLANNED)"]
+    subgraph Platform["Platform containers (IMPLEMENTED)"]
         A["Airflow"]
         P["PostgreSQL"]
         M["MinIO"]
         S["Superset"]
-        PY["Python jobs<br/>push metrics"]
+        PY["Python jobs<br/>emit audit events"]
     end
 
-    subgraph Metrics["Metrics (PLANNED)"]
+    subgraph Metrics["Metrics (IMPLEMENTED, Phase 19)"]
+        EXP["mri-metrics exporter<br/>reads ops + pg + airflow"]
         PROM["Prometheus<br/>scrape + store"]
     end
 
-    subgraph Dash["Dashboards (PLANNED)"]
-        GRAF["Grafana<br/>SLO / pipeline dashboards"]
+    subgraph Dash["Dashboards (IMPLEMENTED)"]
+        GRAF["Grafana<br/>4 provisioned dashboards"]
     end
 
-    subgraph Alerts["Alerting (PLANNED)"]
+    subgraph Alerts["Alerting (IMPLEMENTED)"]
         ALERT["Alert rules<br/>failed DAG, stale data, DQ failure"]
     end
 
-    A -->|expose metrics| PROM
-    P -->|exporter| PROM
-    M -->|/minio/v2/metrics| PROM
-    S -->|expose metrics| PROM
-    PY -->|custom counters| PROM
+    PY -->|canonical JSONL events| P
+    P -->|exporter| EXP
+    A -->|metadata| EXP
+    EXP --> PROM
     PROM --> GRAF
     PROM --> ALERT
 ```
 
 | Component | Responsibility |
 |-----------|----------------|
-| **Prometheus** | Scrapes and stores time-series metrics from containers and custom job counters |
-| **Grafana** | Dashboards: pipeline duration, row counts, rejection rates, resource usage |
+| **mri-metrics exporter** | Translates `ops` views, PostgreSQL health and Airflow metadata into bounded Prometheus series |
+| **Prometheus** | Scrapes and stores the exporter's time-series |
+| **Grafana** | 4 provisioned dashboards: pipeline duration, row counts, rejection rates, platform/freshness |
 | **Alert rules** | Failures of DAGs, stale partitions, failing expectation suites |
 
-## Planned custom metrics (Python side)
+## Implemented metrics (exporter side)
 
-| Metric | Type | Meaning |
-|--------|------|---------|
-| `ingest_rows_fetched_total` | counter | rows/payloads read from a source |
-| `ingest_rows_written_total` | counter | rows written to MinIO/Postgres |
-| `ingest_rows_rejected_total` | counter | rows failing contract/validation (**no silent loss**) |
-| `ingest_duration_seconds` | histogram | ingestion run duration |
-| `dq_validation_failures_total` | counter | failing Great Expectations validations |
+The exporter emits `mri_*` series derived from the `ops` schema (see the metric
+catalogue for the full list and semantics), for example run facts, pipeline
+durations, row/rejection counts, freshness and Airflow task/run states.
 
-## Prerequisites before this can start
+## Enabling the stack
 
-1. Full container stack running (Postgres, MinIO, Airflow, Superset).
-2. Custom metrics endpoint exposed by the Python jobs.
-3. RAM headroom on the host (currently ~7.8 GiB total — see
-   [`../development-environment.md`](../development-environment.md)).
+The monitoring stack is an **optional** compose profile and is never required by
+the core data pipeline:
 
-Until then, **Airflow task logs + pytest/GE/dbt reports are the observability surface.**
+```powershell
+docker compose --env-file .env -f infrastructure/docker/docker-compose.yml `
+  -f infrastructure/docker/docker-compose.observability.yml --profile observability up -d
+```
+
+Prometheus `:9090`, Grafana `:3001`, exporter `:9245`.

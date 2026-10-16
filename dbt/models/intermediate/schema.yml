@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: int_sales
+    description: Sale line items with warehouse-aligned columns and unified `event_date`.
+    columns:
+      - name: sale_id
+        tests:
+          - unique
+          - not_null
+      - name: event_date
+        tests:
+          - not_null
+      - name: store_id
+        tests:
+          - not_null
+      - name: channel_id
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null
+
+  - name: int_purchases
+    description: Purchase receipt lines with unified `event_date`.
+    columns:
+      - name: purchase_id
+        tests:
+          - unique
+          - not_null
+      - name: event_date
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null
+
+  - name: int_inventory
+    description: Stock snapshots with unified `event_date` for as-of dimension lookups.
+    columns:
+      - name: event_date
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: store_id
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null
+
+  - name: int_customers
+    description: Customer business attributes and conformed region/channel keys for `dim_client`.
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+      - name: region_id
+        tests:
+          - not_null
+      - name: preferred_channel_id
+        tests:
+          - not_null
+
+  - name: int_products
+    description: Product attributes tracked by the SCD2 snapshot; a change in any of these columns opens a new dimension version.
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+      - name: launch_date
+        tests:
+          - not_null
+
+  - name: int_promotions
+    description: Promotion attributes with validity window for `dim_promotion`.
+    columns:
+      - name: promotion_id
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: end_date
+        tests:
+          - not_null

@@ -1,0 +1,38 @@
+# Morocco Retail Intelligence — custom Apache Airflow image (PHASE 11).
+#
+# Extends the official, version-pinned Airflow 3.3.2 image with the project's
+# locked dependencies installed into an ISOLATED virtualenv (/opt/venv) that
+# never mixes with Airflow's own Python environment:
+#
+#   * Airflow and its providers keep the versions pinned by the base image.
+#   * Pipeline tasks invoke /opt/venv/bin/python, which resolves the project
+#     exactly like `uv run` on the host — uv.lock is the single source of
+#     truth for both environments.
+#
+# Build context is the repository root (see docker-compose.airflow.yml).
+
+FROM ghcr.io/astral-sh/uv:0.12.1 AS uv
+FROM apache/airflow:3.3.2-python3.12
+
+COPY --from=uv /uv /uvx /bin/
+
+USER root
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_CACHE_DIR=/opt/.uv-cache
+
+WORKDIR /opt/airflow/mri
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY src/ src/
+COPY apps/ apps/
+COPY README.md ./
+RUN uv sync --frozen --no-dev \
+    && chown -R airflow:0 /opt/venv \
+    && rm -rf /opt/.uv-cache
+
+USER airflow

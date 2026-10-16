@@ -89,32 +89,61 @@ would exhaust the available RAM.
 
 ---
 
-## MinIO image availability — important caveat
+## MinIO image availability and supply chain (updated Phase 20)
 
-MinIO has withdrawn its community Docker images from public registries:
+MinIO has stopped distributing community **Docker images**:
 
-- Docker Hub `minio/minio` no longer resolves (repository removed).
-- `quay.io/minio/minio` returns HTTP 401 without authentication.
-- The upstream GitHub repository was archived in 2026.
+- Docker Hub `minio/minio`: repository removed — pulling the previous pin returns
+  `denied: requested access to the resource is denied`.
+- `quay.io/minio/minio`: anonymous pulls now fail (`no such manifest` / 401); the
+  historical tag is no longer served (verified 2026-10-12).
+- The upstream GitHub repository was archived in 2026. MinIO's own release notes
+  now instruct container users to build from source.
 
-The stack therefore pins the **last official community release available locally**:
+**Known vulnerability:** the previously pinned release
+`minio/minio:RELEASE.2025-09-07T16-13-09Z` is affected by privilege escalation via
+session-policy bypass in service accounts and STS —
+**GHSA-jjjj-jwhf-8rgr / CVE-2025-62506** (CVSS 8.1). The fix landed only in
+`RELEASE.2025-10-15T17-29-55Z`, which MinIO never published as a Docker image, so
+no patched image was pullable from any registry for that build.
+
+**Decision (adopted in Phase 20):** the default MinIO image is the maintained,
+security-maintained Chainguard rebuild, **digest-pinned**:
 
 ```
-minio/minio:RELEASE.2025-09-07T16-13-09Z
+cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+# RELEASE.2026-09-22T19-25-18Z (post CVE-2025-62506), go 1.27.2
 ```
 
-Consequences and mitigations:
+Validation (Phase 20, evidence):
 
-- `docker compose up` works because that image is present in the local Docker
-  cache; Compose does not re-pull an image that already exists.
-- On a **clean machine** the image must be obtained first (copy the cached image,
-  or build the release from source, or substitute a maintained fork such as
-  `cgr.dev/chainguard/minio@sha256:…`, verified pullable during this phase).
-- The tag is pinned (not `latest`) so the running binary is reproducible where the
-  image is available.
+- The tag pulls publicly on a clean engine.
+- An **isolated** instance (temp ports `19000`/`19001`, test-only credentials) ran
+  the four MinIO integration-test modules: `test_ingestion_minio.py`,
+  `test_external_minio.py`, `test_bronze_minio.py`, `test_external_bronze_minio.py`
+  → **6 passed** (real S3 put/get/stat/delete round-trips).
+- The recreated `mri-minio` then passed `test_ingestion_minio.py` against the
+  production volume, and `GET /minio/health/live` returns 200 (host port 9000).
+- **Data preserved:** the same `mri-minio-data` named volume is mounted unchanged
+  (MinIO on-disk format is forward-compatible; downgrading to the 2025 build is
+  not supported). A safety snapshot lives at
+  `%TEMP%\minio-data-backup.tar.gz` (86.6 MB, 2026-10-12).
 
-This is recorded as a known warning in the phase completion report and in
-`docs/development-environment.md`.
+Behaviour differences to expect vs the old image:
+
+- The healthcheck is a bash `/dev/tcp` connect probe (the image has no
+  `curl`/`wget`); HTTP `/minio/health/live` is exercised post-boot by the
+  integration tests instead.
+- The image's default user is non-root (UID 65532); the service runs with
+  `user: "0:0"` so the pre-existing root-owned volume stays writable — identical
+  runtime behaviour to the old image.
+- Console is unchanged (`:9001`).
+
+Rollback (operational): revert the `image:` line in
+`infrastructure/docker/docker-compose.yml` to
+`minio/minio:RELEASE.2025-09-07T16-13-09Z` (still present in the local cache) and,
+if needed, restore the volume from the snapshot. Note that this reintroduces
+CVE-2025-62506; rollback is only for emergency recovery, not a steady state.
 
 ---
 
@@ -125,7 +154,8 @@ This is recorded as a known warning in the phase completion report and in
 | Native PostgreSQL/MinIO installs | Pollutes the host, hard to reproduce/tear down, and would conflict with existing native PostgreSQL services. |
 | Container PostgreSQL on host port 5432 | Conflicts with the running native PostgreSQL 16. |
 | `minio/minio:latest` | Explicitly forbidden, non-reproducible, and the registry repo is gone anyway. |
-| Maintained MinIO fork (Chainguard) | Verified pullable and security-maintained, but distroless (no `curl`), no console ergonomics, and only a moving `latest` tag; kept as a documented fallback rather than the default. |
+| Maintained MinIO fork (Chainguard) | **Adopted as default since Phase 20** after isolated S3-compat testing and digest pinning; distroless-style (no `curl`) → `/dev/tcp` healthcheck; runs as `user: 0:0` to reuse the existing volume. |
+| Self-built MinIO from source | Official recommendation; deterministic but heavy (Go toolchain build); kept as the clean-machine fallback if Chainguard's distribution is ever unavailable. |
 | Object storage substituted by a plain filesystem mount | Loses the S3-compatible interface the ingestion layer is designed against. |
 | Introducing Airflow/Superset now | Exceeds the available container memory for this phase and is out of scope. |
 
@@ -134,8 +164,10 @@ This is recorded as a known warning in the phase completion report and in
 ## Consequences
 
 - **Positive:** reproducible local services, no host pollution, host-port conflict
-  avoided, and a validated persistence/health baseline for later phases.
-- **Negative:** the MinIO image must pre-exist locally (registry withdrawal); the
-  stack depends on Docker Desktop being running.
-- **Follow-up:** when ingestion needs MinIO on a fresh machine, decide between a
-  maintained fork and a self-built image (revisit in a later phase).
+  avoided, a validated persistence/health baseline for later phases, and an
+  actively maintained, CVE-free MinIO distribution by default.
+- **Negative:** MinIO upstream no longer publishes images (Chainguard is a third
+  party rolling distribution, pinned by digest); the stack depends on Docker
+  Desktop being running.
+- **Follow-up:** revisit the Chainguard distribution if its upstream source base
+  changes materially; otherwise treat the digest pin as the reproduction point.

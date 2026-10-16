@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# Data contract: calendar
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: calendar
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Daily calendar with weekday, holiday and Islamic-observance flags."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [date]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: date, type: date, required: true, nullable: false, description: "Calendar date (ISO-8601 yyyy-mm-dd)"}
+  - {name: year, type: integer, required: true, nullable: false, description: "Calendar year"}
+  - {name: month, type: integer, required: true, nullable: false, description: "Month 1-12"}
+  - {name: quarter, type: integer, required: true, nullable: false, description: "Quarter 1-4"}
+  - {name: iso_week, type: integer, required: true, nullable: false, description: "ISO week number"}
+  - {name: weekday, type: integer, required: true, nullable: false, description: "Weekday 0=Monday .. 6=Sunday"}
+  - {name: weekday_name, type: string, required: true, nullable: false, description: "English weekday name"}
+  - {name: is_weekend, type: boolean, required: true, nullable: false, description: "Weekend flag"}
+  - {name: is_holiday, type: boolean, required: true, nullable: false, description: "National-holiday flag"}
+  - {name: holiday_name, type: string, required: false, nullable: true, description: "Holiday name (null when not a holiday)"}
+  - {name: is_ramadan, type: boolean, required: true, nullable: false, description: "Ramadan flag"}
+  - {name: is_eid_al_fitr, type: boolean, required: true, nullable: false, description: "Eid al-Fitr flag"}
+  - {name: is_eid_al_adha, type: boolean, required: true, nullable: false, description: "Eid al-Adha flag"}
+  - {name: season, type: string, required: true, nullable: false, description: "One of: winter, spring, summer, autumn"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "date is unique and not null"
+    - "month between 1 and 12"
+    - "quarter between 1 and 4"
+sla:
+  consumers: [bronze, staging]

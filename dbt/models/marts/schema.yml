@@ -1,0 +1,254 @@
+version: 2
+
+models:
+  - name: dim_region
+    description: Type-1 dimension for Moroccan regions (conformed key `region_id`).
+    columns:
+      - name: region_sk
+        tests:
+          - unique
+          - not_null
+      - name: region_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_canal
+    description: Type-1 dimension for sales channels (physical / digital).
+    columns:
+      - name: canal_sk
+        tests:
+          - unique
+          - not_null
+      - name: channel_id
+        tests:
+          - unique
+          - not_null
+      - name: channel_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["physical", "digital"]
+
+  - name: dim_date
+    description: Calendar dimension with holiday and Ramadan flags (PK `date_sk`, natural key `date`).
+    columns:
+      - name: date_sk
+        tests:
+          - unique
+          - not_null
+      - name: date
+        tests:
+          - unique
+          - not_null
+      - name: weekday
+        tests:
+          - not_null
+      - name: is_weekend
+        tests:
+          - not_null
+
+  - name: dim_magasin
+    description: Type-1 store dimension with region conformed key.
+    columns:
+      - name: magasin_sk
+        tests:
+          - unique
+          - not_null
+      - name: store_id
+        tests:
+          - unique
+          - not_null
+      - name: region_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: region_sk
+
+  - name: dim_client
+    description: Type-1 customer dimension with region and preferred-channel conformed keys.
+    columns:
+      - name: client_sk
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+      - name: region_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: region_sk
+      - name: canal_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_canal')
+                field: canal_sk
+
+  - name: dim_produit
+    description: >
+      SCD2 product dimension. One row per product version; `valid_from`/`valid_to`
+      bound the period the version was effective (valid_to is null for the current
+      version). The first version of each product is effective from `launch_date`.
+      Surrogate key `produit_sk` is a deterministic hash of product_id, version
+      number and effective date, so it never collides across versions.
+    columns:
+      - name: produit_sk
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: valid_from
+        tests:
+          - not_null
+      - name: is_current
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+
+  - name: dim_promotion
+    description: Promotion dimension linked to the current product version plus region/channel keys.
+    columns:
+      - name: promotion_sk
+        tests:
+          - unique
+          - not_null
+      - name: promotion_id
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+
+  - name: fact_ventes
+    description: Sales fact at sale-line grain, product resolved as-of the sale date against SCD2 `dim_produit`.
+    columns:
+      - name: sale_id
+        tests:
+          - unique
+          - not_null
+      - name: date_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_sk
+      - name: magasin_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_magasin')
+                field: magasin_sk
+      - name: canal_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_canal')
+                field: canal_sk
+      - name: produit_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_produit')
+                field: produit_sk
+      - name: quantity
+        tests:
+          - not_null
+      - name: net_amount_mad
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null
+
+  - name: fact_achats
+    description: Purchase fact at receipt-line grain, product resolved as-of the purchase date.
+    columns:
+      - name: purchase_id
+        tests:
+          - unique
+          - not_null
+      - name: date_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_sk
+      - name: magasin_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_magasin')
+                field: magasin_sk
+      - name: produit_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_produit')
+                field: produit_sk
+      - name: quantity
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null
+
+  - name: fact_stock
+    description: Inventory fact at store/product/date grain, product resolved as-of the snapshot date.
+    columns:
+      - name: date_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_sk
+      - name: magasin_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_magasin')
+                field: magasin_sk
+      - name: produit_sk
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_produit')
+                field: produit_sk
+      - name: quantity_on_hand
+        tests:
+          - not_null
+      - name: snapshot_date
+        tests:
+          - not_null
+      - name: store_id
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: ingestion_timestamp
+        tests:
+          - not_null

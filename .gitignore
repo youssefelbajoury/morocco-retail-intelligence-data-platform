@@ -38,6 +38,9 @@ coverage.xml
 .tox/
 .nox/
 
+# --- Playwright browser E2E artifacts (screenshots) ---
+e2e/artifacts/
+
 # --- Ruff / mypy ---
 .ruff_cache/
 .mypy_cache/
@@ -98,6 +101,9 @@ docker/volumes/
 # --- Airflow / dbt local artifacts (created in later phases) ---
 dags/__pycache__/
 logs/airflow/
+/airflow/logs/*
+!/airflow/logs/.gitkeep
+/airflow/config/
 plugins/
 airflow.db
 airflow.cfg
@@ -105,3 +111,5 @@ dbt_target/
 target/
 dbt_packages/
 logs/dbt/
+dbt/logs/
+dbt/.user.yml

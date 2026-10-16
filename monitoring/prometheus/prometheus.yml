@@ -1,0 +1,30 @@
+# Morocco Retail Intelligence Data Platform — Prometheus configuration (PHASE 19).
+#
+# Optional observability profile. Scrapes the project-owned mri-metrics
+# exporter (which reads the existing ops audit views, PostgreSQL health and the
+# Airflow metadata database) and Prometheus itself. Scrape intervals are tuned
+# for batch workloads: the underlying data only changes after a pipeline run, so
+# a 30s cadence is plenty and keeps storage small.
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    stack: mri-local
+    environment: local
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: mri-metrics
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["metrics-exporter:9245"]
+        labels:
+          component: exporter

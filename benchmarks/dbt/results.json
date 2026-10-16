@@ -1,0 +1,212 @@
+[
+  {
+    "timestamp": "2026-10-10T13:57:02+00:00",
+    "scale": "100k",
+    "profile": {
+      "name": "dbt100k",
+      "sales_rows": 100000,
+      "product_count": 120,
+      "store_count": 6,
+      "customer_count": 800,
+      "promotion_count": 80,
+      "assortment_ratio": 0.5,
+      "snapshot_days": 30,
+      "chunk_rows": 1000000
+    },
+    "seed": 4242,
+    "delta_pct": 2.0,
+    "silver_counts": {
+      "sales": 100000,
+      "purchases": 12850,
+      "inventory": 17640
+    },
+    "silver_counts_after_delta": {
+      "sales": 102000,
+      "purchases": 12850,
+      "inventory": 17640
+    },
+    "silver_load_seconds": 63.29174799999964,
+    "phases": {
+      "full": {
+        "elapsed_seconds": 43.106,
+        "peak_rss_bytes": 157323264,
+        "rows_rebuilt": 130490,
+        "rows_per_second": 3027.2
+      },
+      "noop": {
+        "elapsed_seconds": 23.507,
+        "peak_rss_bytes": 154271744
+      },
+      "incremental": {
+        "elapsed_seconds": 21.655,
+        "peak_rss_bytes": 154333184,
+        "delta_rows": 2000,
+        "rows_per_second": 92.4
+      },
+      "facts_full_refresh": {
+        "elapsed_seconds": 23.598,
+        "peak_rss_bytes": 153550848,
+        "rows_rebuilt": 132490,
+        "rows_per_second": 5614.5
+      }
+    },
+    "facts_full": {
+      "fact_ventes": 100000,
+      "fact_achats": 12850,
+      "fact_stock": 17640
+    },
+    "facts_incremental": {
+      "fact_ventes": 102000,
+      "fact_achats": 12850,
+      "fact_stock": 17640
+    },
+    "footprint_incremental": {
+      "fact_ventes": {
+        "rows": 102000,
+        "sum_a": "158251",
+        "sum_b": "8498867.69"
+      },
+      "fact_achats": {
+        "rows": 12850,
+        "sum_a": "160727",
+        "sum_b": "6147613.98"
+      },
+      "fact_stock": {
+        "rows": 17640,
+        "sum_a": "335618",
+        "sum_b": "11986465.04"
+      }
+    },
+    "footprint_full_refresh": {
+      "fact_ventes": {
+        "rows": 102000,
+        "sum_a": "158251",
+        "sum_b": "8498867.69"
+      },
+      "fact_achats": {
+        "rows": 12850,
+        "sum_a": "160727",
+        "sum_b": "6147613.98"
+      },
+      "fact_stock": {
+        "rows": 17640,
+        "sum_a": "335618",
+        "sum_b": "11986465.04"
+      }
+    },
+    "db_bytes": {
+      "after_full": 957701143,
+      "after_incremental": 958716951,
+      "marts_schema": 21479424,
+      "silver_schema": 48168960,
+      "database": 959380503
+    },
+    "equal_full_and_incremental": true,
+    "reconciliation_balanced": true
+  },
+  {
+    "timestamp": "2026-10-10T14:22:19+00:00",
+    "scale": "1m",
+    "profile": {
+      "name": "dbt1m",
+      "sales_rows": 1000000,
+      "product_count": 400,
+      "store_count": 16,
+      "customer_count": 10000,
+      "promotion_count": 500,
+      "assortment_ratio": 0.45,
+      "snapshot_days": 14,
+      "chunk_rows": 1000000
+    },
+    "seed": 4242,
+    "delta_pct": 2.0,
+    "silver_counts": {
+      "sales": 1000000,
+      "purchases": 158090,
+      "inventory": 302400
+    },
+    "silver_counts_after_delta": {
+      "sales": 1020000,
+      "purchases": 158090,
+      "inventory": 302400
+    },
+    "silver_load_seconds": 1044.2001340999996,
+    "phases": {
+      "full": {
+        "elapsed_seconds": 76.489,
+        "peak_rss_bytes": 157712384,
+        "rows_rebuilt": 1460490,
+        "rows_per_second": 19094.1
+      },
+      "noop": {
+        "elapsed_seconds": 24.631,
+        "peak_rss_bytes": 154107904
+      },
+      "incremental": {
+        "elapsed_seconds": 29.546,
+        "peak_rss_bytes": 154013696,
+        "delta_rows": 20000,
+        "rows_per_second": 676.9
+      },
+      "facts_full_refresh": {
+        "elapsed_seconds": 41.955,
+        "peak_rss_bytes": 154124288,
+        "rows_rebuilt": 1480490,
+        "rows_per_second": 35287.6
+      }
+    },
+    "facts_full": {
+      "fact_ventes": 1000000,
+      "fact_achats": 158090,
+      "fact_stock": 302400
+    },
+    "facts_incremental": {
+      "fact_ventes": 1020000,
+      "fact_achats": 158090,
+      "fact_stock": 302400
+    },
+    "footprint_incremental": {
+      "fact_ventes": {
+        "rows": 1020000,
+        "sum_a": "1597794",
+        "sum_b": "63892375.11"
+      },
+      "fact_achats": {
+        "rows": 158090,
+        "sum_a": "1598565",
+        "sum_b": "50962781.45"
+      },
+      "fact_stock": {
+        "rows": 302400,
+        "sum_a": "3996083",
+        "sum_b": "117006922.53"
+      }
+    },
+    "footprint_full_refresh": {
+      "fact_ventes": {
+        "rows": 1020000,
+        "sum_a": "1597794",
+        "sum_b": "63892375.11"
+      },
+      "fact_achats": {
+        "rows": 158090,
+        "sum_a": "1598565",
+        "sum_b": "50962781.45"
+      },
+      "fact_stock": {
+        "rows": 302400,
+        "sum_a": "3996083",
+        "sum_b": "117006922.53"
+      }
+    },
+    "db_bytes": {
+      "after_full": 2109357079,
+      "after_incremental": 2119498775,
+      "marts_schema": 222388224,
+      "silver_schema": 524820480,
+      "database": 2119711767
+    },
+    "equal_full_and_incremental": true,
+    "reconciliation_balanced": true
+  }
+]

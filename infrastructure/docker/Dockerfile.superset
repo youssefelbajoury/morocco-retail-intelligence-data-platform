@@ -1,0 +1,21 @@
+# Morocco Retail Intelligence — custom Apache Superset image (PHASE 12).
+#
+# Extends the official, version-pinned Superset 6.1.0 image with the
+# PostgreSQL database driver. The official image ships WITHOUT any Postgres
+# driver (documented in docs/development-environment.md), so the read-only
+# warehouse connection would otherwise fail with "No module named 'psycopg2'".
+#
+# Build context is the repository root (see docker-compose.superset.yml).
+
+FROM apache/superset:6.1.0
+
+USER root
+# Superset runs from its own virtualenv (/app/.venv), which ships WITHOUT pip
+# and cannot install packages itself. The system Python and the venv are both
+# 3.10, so install the wheel with system pip and drop it onto the venv's
+# site-packages — otherwise `import psycopg2` silently misses the driver.
+RUN pip install --no-cache-dir --target /tmp/psycopg2 "psycopg2-binary==2.9.10" \
+    && SITE=$(/app/.venv/bin/python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
+    && cp -r /tmp/psycopg2/* "$SITE"/ \
+    && rm -rf /tmp/psycopg2
+USER superset

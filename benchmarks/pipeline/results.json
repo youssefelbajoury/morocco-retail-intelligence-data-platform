@@ -1,0 +1,700 @@
+[
+  {
+    "timestamp": "2026-10-10T14:55:48+00:00",
+    "scale": "small",
+    "profile": {
+      "name": "small",
+      "sales_rows": 60000,
+      "product_count": 200,
+      "store_count": 10,
+      "customer_count": 3000,
+      "promotion_count": 150,
+      "assortment_ratio": 0.5,
+      "snapshot_days": 30,
+      "chunk_rows": 1000000
+    },
+    "seed": 4242,
+    "warm_repeats": 1,
+    "dataset_bytes": 8766627,
+    "environment": {
+      "python": "3.12.13",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "cpu_count": 8,
+      "total_memory_bytes": 8386805760
+    },
+    "cold": {
+      "cold": true,
+      "stages": {
+        "ingest_files": 3.391,
+        "ingest_external": 1.7,
+        "bronze": 48.491,
+        "silver": 60.871,
+        "warehouse": 47.82,
+        "dbt": 59.316
+      },
+      "details": {
+        "ingest_files": {
+          "objects_uploaded": 10,
+          "objects_reused": 0,
+          "rows": 126348
+        },
+        "ingest_external": {
+          "requests": 12,
+          "fetched": 12,
+          "already_fetched": 0,
+          "failed": 0
+        },
+        "bronze": {
+          "outcomes": {
+            "bronzed": 22,
+            "already_bronzed": 0,
+            "failed": 0,
+            "planned": 0
+          },
+          "promoted": 22,
+          "quality": {
+            "passed": 22,
+            "failed": 0
+          }
+        },
+        "silver": {
+          "ok": true,
+          "batches": 22
+        },
+        "warehouse": {
+          "balanced": true,
+          "timing": {
+            "ddl_seconds": 0.593,
+            "load_seconds": 46.633,
+            "reconcile_seconds": 0.542,
+            "total_seconds": 47.82
+          }
+        },
+        "dbt": {
+          "returncode": 0,
+          "peak_rss_bytes": 157564928
+        }
+      },
+      "peak_rss_bytes": 384380928,
+      "counts": {
+        "silver": {
+          "sales": 60000,
+          "purchases": 17412,
+          "inventory": 44100
+        },
+        "warehouse": {
+          "dim_region": 12,
+          "dim_canal": 3,
+          "dim_date": 1461,
+          "dim_magasin": 10,
+          "dim_client": 3000,
+          "dim_produit": 200,
+          "dim_promotion": 150,
+          "fact_ventes": 60000,
+          "fact_achats": 17412,
+          "fact_stock": 44100
+        },
+        "dbt_marts": {
+          "fact_ventes": 60000,
+          "fact_achats": 17412,
+          "fact_stock": 44100
+        }
+      },
+      "db_bytes": {
+        "database": 2245778455,
+        "silver_schema": 42885120,
+        "warehouse_schema": 24682496,
+        "dbt_marts_schema": 18423808
+      }
+    },
+    "warm_median_seconds": {
+      "ingest_files": 1.488,
+      "ingest_external": 0.172,
+      "bronze": 35.245,
+      "silver": 55.711,
+      "warehouse": 46.927,
+      "dbt": 47.946
+    },
+    "passes": [
+      {
+        "cold": true,
+        "stages": {
+          "ingest_files": 3.391,
+          "ingest_external": 1.7,
+          "bronze": 48.491,
+          "silver": 60.871,
+          "warehouse": 47.82,
+          "dbt": 59.316
+        },
+        "details": {
+          "ingest_files": {
+            "objects_uploaded": 10,
+            "objects_reused": 0,
+            "rows": 126348
+          },
+          "ingest_external": {
+            "requests": 12,
+            "fetched": 12,
+            "already_fetched": 0,
+            "failed": 0
+          },
+          "bronze": {
+            "outcomes": {
+              "bronzed": 22,
+              "already_bronzed": 0,
+              "failed": 0,
+              "planned": 0
+            },
+            "promoted": 22,
+            "quality": {
+              "passed": 22,
+              "failed": 0
+            }
+          },
+          "silver": {
+            "ok": true,
+            "batches": 22
+          },
+          "warehouse": {
+            "balanced": true,
+            "timing": {
+              "ddl_seconds": 0.593,
+              "load_seconds": 46.633,
+              "reconcile_seconds": 0.542,
+              "total_seconds": 47.82
+            }
+          },
+          "dbt": {
+            "returncode": 0,
+            "peak_rss_bytes": 157564928
+          }
+        },
+        "peak_rss_bytes": 384380928,
+        "counts": {
+          "silver": {
+            "sales": 60000,
+            "purchases": 17412,
+            "inventory": 44100
+          },
+          "warehouse": {
+            "dim_region": 12,
+            "dim_canal": 3,
+            "dim_date": 1461,
+            "dim_magasin": 10,
+            "dim_client": 3000,
+            "dim_produit": 200,
+            "dim_promotion": 150,
+            "fact_ventes": 60000,
+            "fact_achats": 17412,
+            "fact_stock": 44100
+          },
+          "dbt_marts": {
+            "fact_ventes": 60000,
+            "fact_achats": 17412,
+            "fact_stock": 44100
+          }
+        },
+        "db_bytes": {
+          "database": 2245778455,
+          "silver_schema": 42885120,
+          "warehouse_schema": 24682496,
+          "dbt_marts_schema": 18423808
+        }
+      },
+      {
+        "cold": false,
+        "stages": {
+          "ingest_files": 1.488,
+          "ingest_external": 0.172,
+          "bronze": 35.245,
+          "silver": 55.711,
+          "warehouse": 46.927,
+          "dbt": 47.946
+        },
+        "details": {
+          "ingest_files": {
+            "objects_uploaded": 0,
+            "objects_reused": 10,
+            "rows": 126348
+          },
+          "ingest_external": {
+            "requests": 12,
+            "fetched": 0,
+            "already_fetched": 12,
+            "failed": 0
+          },
+          "bronze": {
+            "outcomes": {
+              "bronzed": 0,
+              "already_bronzed": 22,
+              "failed": 0,
+              "planned": 0
+            },
+            "promoted": 22,
+            "quality": {
+              "passed": 22,
+              "failed": 0
+            }
+          },
+          "silver": {
+            "ok": true,
+            "batches": 22
+          },
+          "warehouse": {
+            "balanced": true,
+            "timing": {
+              "ddl_seconds": 0.688,
+              "load_seconds": 45.647,
+              "reconcile_seconds": 0.542,
+              "total_seconds": 46.926
+            }
+          },
+          "dbt": {
+            "returncode": 0,
+            "peak_rss_bytes": 157605888
+          }
+        },
+        "peak_rss_bytes": 381853696,
+        "counts": {
+          "silver": {
+            "sales": 60000,
+            "purchases": 17412,
+            "inventory": 44100
+          },
+          "warehouse": {
+            "dim_region": 12,
+            "dim_canal": 3,
+            "dim_date": 1461,
+            "dim_magasin": 10,
+            "dim_client": 3000,
+            "dim_produit": 200,
+            "dim_promotion": 150,
+            "fact_ventes": 60000,
+            "fact_achats": 17412,
+            "fact_stock": 44100
+          },
+          "dbt_marts": {
+            "fact_ventes": 60000,
+            "fact_achats": 17412,
+            "fact_stock": 44100
+          }
+        },
+        "db_bytes": {
+          "database": 2246417431,
+          "silver_schema": 42885120,
+          "warehouse_schema": 24682496,
+          "dbt_marts_schema": 18767872
+        }
+      }
+    ],
+    "reconciliation": {
+      "rows_match": true,
+      "warehouse_balanced": true,
+      "dbt_tests_passed": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T16:19:43+00:00",
+    "scale": "medium",
+    "profile": {
+      "name": "medium",
+      "sales_rows": 600000,
+      "product_count": 600,
+      "store_count": 24,
+      "customer_count": 25000,
+      "promotion_count": 800,
+      "assortment_ratio": 0.4,
+      "snapshot_days": 14,
+      "chunk_rows": 1000000
+    },
+    "seed": 4242,
+    "warm_repeats": 0,
+    "dataset_bytes": 92712950,
+    "environment": {
+      "python": "3.12.13",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "cpu_count": 8,
+      "total_memory_bytes": 8386805760
+    },
+    "cold": {
+      "cold": true,
+      "stages": {
+        "ingest_files": 9.55,
+        "ingest_external": 1.447,
+        "bronze": 105.995,
+        "silver": 275.518,
+        "warehouse": 274.184,
+        "dbt": 91.961
+      },
+      "details": {
+        "ingest_files": {
+          "objects_uploaded": 10,
+          "objects_reused": 0,
+          "rows": 1397019
+        },
+        "ingest_external": {
+          "requests": 12,
+          "fetched": 12,
+          "already_fetched": 0,
+          "failed": 0
+        },
+        "bronze": {
+          "outcomes": {
+            "bronzed": 22,
+            "already_bronzed": 0,
+            "failed": 0,
+            "planned": 0
+          },
+          "promoted": 22,
+          "quality": {
+            "passed": 22,
+            "failed": 0
+          }
+        },
+        "silver": {
+          "ok": true,
+          "batches": 22
+        },
+        "warehouse": {
+          "balanced": true,
+          "timing": {
+            "ddl_seconds": 0.818,
+            "load_seconds": 268.176,
+            "reconcile_seconds": 3.302,
+            "total_seconds": 274.165
+          }
+        },
+        "dbt": {
+          "returncode": 0,
+          "peak_rss_bytes": 157650944
+        }
+      },
+      "peak_rss_bytes": 1141927936,
+      "counts": {
+        "silver": {
+          "sales": 600000,
+          "purchases": 164949,
+          "inventory": 604170
+        },
+        "warehouse": {
+          "dim_region": 12,
+          "dim_canal": 3,
+          "dim_date": 1461,
+          "dim_magasin": 24,
+          "dim_client": 25000,
+          "dim_produit": 600,
+          "dim_promotion": 800,
+          "fact_ventes": 600000,
+          "fact_achats": 164949,
+          "fact_stock": 604170
+        },
+        "dbt_marts": {
+          "fact_ventes": 600000,
+          "fact_achats": 164949,
+          "fact_stock": 604170
+        }
+      },
+      "db_bytes": {
+        "database": 3586858007,
+        "silver_schema": 481853440,
+        "warehouse_schema": 256204800,
+        "dbt_marts_schema": 191545344
+      }
+    },
+    "warm_median_seconds": null,
+    "passes": [
+      {
+        "cold": true,
+        "stages": {
+          "ingest_files": 9.55,
+          "ingest_external": 1.447,
+          "bronze": 105.995,
+          "silver": 275.518,
+          "warehouse": 274.184,
+          "dbt": 91.961
+        },
+        "details": {
+          "ingest_files": {
+            "objects_uploaded": 10,
+            "objects_reused": 0,
+            "rows": 1397019
+          },
+          "ingest_external": {
+            "requests": 12,
+            "fetched": 12,
+            "already_fetched": 0,
+            "failed": 0
+          },
+          "bronze": {
+            "outcomes": {
+              "bronzed": 22,
+              "already_bronzed": 0,
+              "failed": 0,
+              "planned": 0
+            },
+            "promoted": 22,
+            "quality": {
+              "passed": 22,
+              "failed": 0
+            }
+          },
+          "silver": {
+            "ok": true,
+            "batches": 22
+          },
+          "warehouse": {
+            "balanced": true,
+            "timing": {
+              "ddl_seconds": 0.818,
+              "load_seconds": 268.176,
+              "reconcile_seconds": 3.302,
+              "total_seconds": 274.165
+            }
+          },
+          "dbt": {
+            "returncode": 0,
+            "peak_rss_bytes": 157650944
+          }
+        },
+        "peak_rss_bytes": 1141927936,
+        "counts": {
+          "silver": {
+            "sales": 600000,
+            "purchases": 164949,
+            "inventory": 604170
+          },
+          "warehouse": {
+            "dim_region": 12,
+            "dim_canal": 3,
+            "dim_date": 1461,
+            "dim_magasin": 24,
+            "dim_client": 25000,
+            "dim_produit": 600,
+            "dim_promotion": 800,
+            "fact_ventes": 600000,
+            "fact_achats": 164949,
+            "fact_stock": 604170
+          },
+          "dbt_marts": {
+            "fact_ventes": 600000,
+            "fact_achats": 164949,
+            "fact_stock": 604170
+          }
+        },
+        "db_bytes": {
+          "database": 3586858007,
+          "silver_schema": 481853440,
+          "warehouse_schema": 256204800,
+          "dbt_marts_schema": 191545344
+        }
+      }
+    ],
+    "reconciliation": {
+      "rows_match": true,
+      "warehouse_balanced": true,
+      "dbt_tests_passed": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T16:37:04+00:00",
+    "scale": "1m",
+    "profile": {
+      "name": "dbt1m",
+      "sales_rows": 1000000,
+      "product_count": 400,
+      "store_count": 16,
+      "customer_count": 10000,
+      "promotion_count": 500,
+      "assortment_ratio": 0.45,
+      "snapshot_days": 14,
+      "chunk_rows": 1000000
+    },
+    "seed": 4242,
+    "warm_repeats": 0,
+    "dataset_bytes": 116186988,
+    "environment": {
+      "python": "3.12.13",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "cpu_count": 8,
+      "total_memory_bytes": 8386805760
+    },
+    "cold": {
+      "cold": true,
+      "stages": {
+        "ingest_files": 7.761,
+        "ingest_external": 1.452,
+        "bronze": 160.475,
+        "silver": 408.957,
+        "warehouse": 325.186,
+        "dbt": 90.032
+      },
+      "details": {
+        "ingest_files": {
+          "objects_uploaded": 10,
+          "objects_reused": 0,
+          "rows": 1472882
+        },
+        "ingest_external": {
+          "requests": 12,
+          "fetched": 12,
+          "already_fetched": 0,
+          "failed": 0
+        },
+        "bronze": {
+          "outcomes": {
+            "bronzed": 22,
+            "already_bronzed": 0,
+            "failed": 0,
+            "planned": 0
+          },
+          "promoted": 22,
+          "quality": {
+            "passed": 22,
+            "failed": 0
+          }
+        },
+        "silver": {
+          "ok": true,
+          "batches": 22
+        },
+        "warehouse": {
+          "balanced": true,
+          "timing": {
+            "ddl_seconds": 1.281,
+            "load_seconds": 321.329,
+            "reconcile_seconds": 2.422,
+            "total_seconds": 325.186
+          }
+        },
+        "dbt": {
+          "returncode": 0,
+          "peak_rss_bytes": 156979200
+        }
+      },
+      "peak_rss_bytes": 1753198592,
+      "counts": {
+        "silver": {
+          "sales": 1000000,
+          "purchases": 158090,
+          "inventory": 302400
+        },
+        "warehouse": {
+          "dim_region": 12,
+          "dim_canal": 3,
+          "dim_date": 1461,
+          "dim_magasin": 16,
+          "dim_client": 10000,
+          "dim_produit": 400,
+          "dim_promotion": 500,
+          "fact_ventes": 1000000,
+          "fact_achats": 158090,
+          "fact_stock": 302400
+        },
+        "dbt_marts": {
+          "fact_ventes": 1000000,
+          "fact_achats": 158090,
+          "fact_stock": 302400
+        }
+      },
+      "db_bytes": {
+        "database": 5085813783,
+        "silver_schema": 517685248,
+        "warehouse_schema": 304701440,
+        "dbt_marts_schema": 220512256
+      }
+    },
+    "warm_median_seconds": null,
+    "passes": [
+      {
+        "cold": true,
+        "stages": {
+          "ingest_files": 7.761,
+          "ingest_external": 1.452,
+          "bronze": 160.475,
+          "silver": 408.957,
+          "warehouse": 325.186,
+          "dbt": 90.032
+        },
+        "details": {
+          "ingest_files": {
+            "objects_uploaded": 10,
+            "objects_reused": 0,
+            "rows": 1472882
+          },
+          "ingest_external": {
+            "requests": 12,
+            "fetched": 12,
+            "already_fetched": 0,
+            "failed": 0
+          },
+          "bronze": {
+            "outcomes": {
+              "bronzed": 22,
+              "already_bronzed": 0,
+              "failed": 0,
+              "planned": 0
+            },
+            "promoted": 22,
+            "quality": {
+              "passed": 22,
+              "failed": 0
+            }
+          },
+          "silver": {
+            "ok": true,
+            "batches": 22
+          },
+          "warehouse": {
+            "balanced": true,
+            "timing": {
+              "ddl_seconds": 1.281,
+              "load_seconds": 321.329,
+              "reconcile_seconds": 2.422,
+              "total_seconds": 325.186
+            }
+          },
+          "dbt": {
+            "returncode": 0,
+            "peak_rss_bytes": 156979200
+          }
+        },
+        "peak_rss_bytes": 1753198592,
+        "counts": {
+          "silver": {
+            "sales": 1000000,
+            "purchases": 158090,
+            "inventory": 302400
+          },
+          "warehouse": {
+            "dim_region": 12,
+            "dim_canal": 3,
+            "dim_date": 1461,
+            "dim_magasin": 16,
+            "dim_client": 10000,
+            "dim_produit": 400,
+            "dim_promotion": 500,
+            "fact_ventes": 1000000,
+            "fact_achats": 158090,
+            "fact_stock": 302400
+          },
+          "dbt_marts": {
+            "fact_ventes": 1000000,
+            "fact_achats": 158090,
+            "fact_stock": 302400
+          }
+        },
+        "db_bytes": {
+          "database": 5085813783,
+          "silver_schema": 517685248,
+          "warehouse_schema": 304701440,
+          "dbt_marts_schema": 220512256
+        }
+      }
+    ],
+    "reconciliation": {
+      "rows_match": true,
+      "warehouse_balanced": true,
+      "dbt_tests_passed": true
+    }
+  }
+]

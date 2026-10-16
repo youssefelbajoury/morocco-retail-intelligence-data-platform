@@ -1,0 +1,17 @@
+# Grafana datasource provisioning (PHASE 19).
+# One fixed-uid Prometheus datasource so the version-controlled dashboards can
+# reference it deterministically.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: mri-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 30s
+      httpMethod: POST

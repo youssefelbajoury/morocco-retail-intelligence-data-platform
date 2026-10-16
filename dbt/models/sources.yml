@@ -1,0 +1,49 @@
+version: 2
+
+sources:
+  - name: silver
+    description: >
+      PostgreSQL Silver layer: contract-shaped, structurally constrained,
+      reconciliation-checked business tables loaded from promoted Bronze
+      batches by `python -m apps.ingestion load` (Phase 08). This is the
+      single upstream of every dbt model in this project.
+    schema: "{{ var('silver_schema') }}"
+    meta:
+      owner: data-engineering
+      loaded_by: apps.ingestion load (Silver loader, Phase 08)
+      upstream: promoted Bronze Parquet in MinIO (`bronze/` + `_promoted/`)
+      documentation: docs/pipeline/silver-layer.md
+    freshness:
+      warn_after: {count: 7, period: day}
+      error_after: {count: 30, period: day}
+    tables:
+      - name: sales
+        loaded_at_field: ingestion_timestamp
+        description: One row per sale line item (contract `sales.yml`, PK sale_id).
+      - name: purchases
+        loaded_at_field: ingestion_timestamp
+        description: One row per purchase receipt line (contract `purchases.yml`, PK purchase_id).
+      - name: inventory
+        loaded_at_field: ingestion_timestamp
+        description: One row per store/product/date stock snapshot (contract `inventory.yml`).
+      - name: customers
+        loaded_at_field: ingestion_timestamp
+        description: One row per customer (contract `customers.yml`, PK customer_id).
+      - name: products
+        loaded_at_field: ingestion_timestamp
+        description: One row per product (contract `products.yml`, PK product_id).
+      - name: promotions
+        loaded_at_field: ingestion_timestamp
+        description: One row per promotion (contract `promotions.yml`, PK promotion_id).
+      - name: calendar
+        loaded_at_field: ingestion_timestamp
+        description: One row per calendar date with holiday/Ramadan attributes (contract `calendar.yml`).
+      - name: regions
+        loaded_at_field: ingestion_timestamp
+        description: One row per Moroccan region (contract `regions.yml`, PK region_id).
+      - name: channels
+        loaded_at_field: ingestion_timestamp
+        description: One row per sales channel (contract `channels.yml`, PK channel_id).
+      - name: stores
+        loaded_at_field: ingestion_timestamp
+        description: One row per retail store (contract `stores.yml`, PK store_id).

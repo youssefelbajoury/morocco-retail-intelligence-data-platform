@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# Data contract: sales
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# Core sales line-item fact stream.
+# ---------------------------------------------------------------------------
+id: sales
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Sale line items (one row per product within a shopping transaction)."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [sale_id]
+  business: [transaction_id]
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: sale_id, type: string, required: true, nullable: false, description: "Sale line code, e.g. S000000000"}
+  - {name: transaction_id, type: string, required: true, nullable: false, description: "Basket id grouping sale lines, e.g. T000000000"}
+  - {name: sale_date, type: date, required: true, nullable: false, description: "Sale date (ISO-8601 yyyy-mm-dd)"}
+  - {name: hour_of_day, type: integer, required: true, nullable: false, description: "Hour of day in [8, 23]"}
+  - {name: store_id, type: string, required: true, nullable: false, description: "FK -> stores.store_id"}
+  - {name: channel_id, type: string, required: true, nullable: false, description: "FK -> channels.channel_id"}
+  - {name: customer_id, type: string, required: false, nullable: true, description: "Optional FK -> customers.customer_id (null = anonymous)"}
+  - {name: product_id, type: string, required: true, nullable: false, description: "FK -> products.product_id"}
+  - {name: promotion_id, type: string, required: false, nullable: true, description: "Optional FK -> promotions.promotion_id (null = no promotion)"}
+  - {name: quantity, type: integer, required: true, nullable: false, description: "Units sold (>= 1)"}
+  - {name: unit_price_mad, type: number, required: true, nullable: false, description: "Unit price in MAD at sale time"}
+  - {name: discount_pct, type: number, required: true, nullable: false, description: "Applied discount ratio in [0, 1]"}
+  - {name: net_amount_mad, type: number, required: true, nullable: false, description: "Net amount in MAD (>= 0)"}
+  - {name: cost_amount_mad, type: number, required: true, nullable: false, description: "Cost amount in MAD (>= 0)"}
+  - {name: margin_mad, type: number, required: true, nullable: false, description: "Margin in MAD (>= 0)"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "sale_id is unique and not null"
+    - "quantity >= 1"
+    - "hour_of_day between 8 and 23"
+    - "discount_pct between 0 and 1"
+    - "net_amount_mad >= 0 and margin_mad >= 0"
+    - "store_id exists in stores"
+    - "product_id exists in products"
+    - "channel_id exists in channels"
+sla:
+  consumers: [bronze, staging]

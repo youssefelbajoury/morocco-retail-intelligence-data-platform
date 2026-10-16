@@ -1,0 +1,342 @@
+# Morocco Retail Intelligence Data Platform — continuous integration (PHASE 16).
+#
+# Every push/PR to `main` runs the full quality gate. Design decisions:
+#
+#   1. Reproducibility: Python is pinned to the project's `.python-version`
+#      (3.12), dependencies always come from `uv sync --frozen` (uv.lock is the
+#      single source of truth), and tests run exactly as `make check` would.
+#
+#   2. Caching: `astral-sh/setup-uv` caches the uv toolchain + wheel cache.
+#      Because every job re-runs `uv sync --frozen`, a cached dependency change
+#      can never be silently hidden — uv verifies against uv.lock hashes.
+#
+#   3. No secrets in the repo: every service container uses disposable dummy
+#      credentials defined inline. The repository declares NO GitHub Secrets;
+#      the pipeline needs none (external APIs and dbt/Airflow are keyless or
+#      exercised against throwaway Postgres/MinIO instances).
+#
+#   4. MinIO: the pure-logic unit suite (tests/unit) is exerciseable offline
+#      via the in-memory object store, so it runs in the cheap `unit` job; a
+#      single dedicated `minio-integration` job attaches a real MinIO service
+#      container. MinIO is deliberately NOT started on the unit job — mocked
+#      tests stay mocked there, integration runs once against the real thing.
+#
+#   5. Airflow: the DAG is statically validated with the SAME official
+#      `apache/airflow:3.3.2-python3.12` image the runtime uses, via a one-shot
+#      `docker run` — no cluster is ever started on CI. The validator asserts
+#      every Bash task carries `--dag-run-id` (Phase 16 correlation).
+#
+#   6. Docker: compose syntax is validated for all four files (base, Airflow,
+#      Superset, observability) on every run; images are built ONLY for the
+#      three project-owned images (mri-airflow, mri-superset, mri-metrics).
+#      Heavy asset builds never touch the lint/unit jobs.
+#
+#   7. Observability: the Phase 16 audit/logging suite is fully offline and
+#      runs in the unit job (the dedicated "Audit + observability gate" step
+#      re-runs it explicitly so a regression there is immediately visible).
+#      The Phase 19 Prometheus/Grafana assets are validated offline too — the
+#      "Prometheus + Grafana gate" asserts every dashboard/alert references a
+#      metric the exporter actually emits, and the docker job runs promtool.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Lint (ruff check)
+        run: uv run ruff check .
+      - name: Format check (ruff format --check)
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Typecheck (mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Typecheck (mypy)
+        run: uv run mypy
+
+  unit:
+    name: Unit tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Unit tests
+        run: uv run pytest tests/unit -q
+      - name: Contract drift gate
+        run: uv run pytest tests/unit/test_contract_drift.py -q
+      - name: Audit + observability gate (offline event log, metrics, CLIs)
+        run: |
+          uv run pytest tests/unit/test_observability_events.py \
+            tests/unit/test_observability_store.py \
+            tests/unit/test_observability_runtime.py \
+            tests/unit/test_observability_metrics.py \
+            tests/unit/test_observability_ddl.py \
+            tests/unit/test_observability_cli.py \
+            tests/unit/test_dbt_cli.py -q
+      - name: Prometheus + Grafana gate (offline config + metric-name coverage)
+        run: |
+          uv run pytest tests/unit/test_metrics_model.py \
+            tests/unit/test_metrics_sources.py \
+            tests/unit/test_metrics_exporter.py \
+            tests/unit/test_metrics_config.py \
+            tests/unit/test_metrics_server.py \
+            tests/unit/test_metrics_cli.py \
+            tests/unit/test_metrics_stack.py -q
+
+  integration-postgres:
+    name: "Integration (PostgreSQL: Silver + warehouse + incremental dbt)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mri_retail
+          POSTGRES_USER: retail_app
+          POSTGRES_PASSWORD: ci-integration-postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_app -d mri_retail"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: mri_retail
+      POSTGRES_USER: retail_app
+      POSTGRES_PASSWORD: ci-integration-postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Silver + warehouse integration tests (unique disposable schemas)
+        run: |
+          uv run pytest tests/integration/test_silver_postgres.py \
+            tests/integration/test_warehouse_postgres.py \
+            tests/integration/test_incremental_postgres.py \
+            tests/integration/test_metrics_postgres.py -q
+
+  dbt:
+    name: dbt CI (debug, parse, build on temporary Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mri_retail
+          POSTGRES_USER: retail_app
+          POSTGRES_PASSWORD: ci-dbt-postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_app -d mri_retail"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: mri_retail
+      POSTGRES_USER: retail_app
+      POSTGRES_PASSWORD: ci-dbt-postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: dbt profile + connection check
+        run: uv run python -m apps.dbt debug
+      - name: dbt parse (compile all models, no DB writes)
+        run: uv run python -m apps.dbt parse
+      - name: dbt build + dbt tests + source freshness (throwaway schemes)
+        run: |
+          uv run pytest tests/integration/test_transform_postgres.py -q
+
+  minio-integration:
+    name: "Integration (MinIO: ingestion + bronze + external)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: ci-minio-access-key
+      MINIO_SECRET_KEY: ci-minio-secret-key
+    steps:
+      # MinIO no longer publishes Docker images (source-only; Docker Hub and
+      # Quay tags are gone). This uses the same digest-pinned Chainguard
+      # rebuild as docker-compose.yml (see ADR-001). A `services:` container
+      # cannot be used because the image has no default `server /data` command.
+      - name: Start MinIO (Chainguard digest-pinned)
+        run: |
+          docker run -d --name mri-ci-minio --user 0:0 -p 9000:9000 \
+            -e MINIO_ROOT_USER="$MINIO_ACCESS_KEY" \
+            -e MINIO_ROOT_PASSWORD="$MINIO_SECRET_KEY" \
+            cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56 \
+            server /data
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null 2>&1; then
+              echo "MinIO healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MinIO did not become healthy" >&2
+          docker logs mri-ci-minio >&2 || true
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: MinIO integration tests (isolated buckets, offline HTTP stubs)
+        run: |
+          uv run pytest tests/integration/test_ingestion_minio.py \
+            tests/integration/test_bronze_minio.py \
+            tests/integration/test_external_minio.py \
+            tests/integration/test_external_bronze_minio.py -q
+
+  airflow-dag:
+    name: Airflow DAG validation (static, no cluster)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse the DAG with the real Airflow DagBag (official image)
+        run: |
+          docker run --rm -u root --entrypoint python \
+            -v "${{ github.workspace }}:/mri:ro" \
+            -w /mri \
+            -e AIRFLOW_HOME=/tmp/airflow-home \
+            -e MRI_REPO_ROOT=/mri \
+            apache/airflow:3.3.2-python3.12 \
+            tests/airflow/validate_dag.py --json --dags-folder /mri/airflow/dags
+
+  docker:
+    name: Docker (compose config + project-owned images)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create CI .env (placeholder values for Compose interpolation)
+        run: cp .env.example .env
+      - name: Validate base compose file
+        run: docker compose --env-file .env -f infrastructure/docker/docker-compose.yml config -q
+      - name: Validate base + Airflow compose files
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/docker-compose.yml \
+            -f infrastructure/docker/docker-compose.airflow.yml config -q
+      - name: Validate base + Superset compose files
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/docker-compose.yml \
+            -f infrastructure/docker/docker-compose.superset.yml config -q
+      - name: Validate base + observability overlay (profile)
+        run: |
+          docker compose --env-file .env \
+            -f infrastructure/docker/docker-compose.yml \
+            -f infrastructure/docker/docker-compose.observability.yml \
+            --profile observability config -q
+      - name: Validate Prometheus config and alert rules (promtool)
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            -v "$PWD/monitoring/prometheus/rules:/etc/prometheus/rules:ro" \
+            prom/prometheus:v3.13.4 check config /etc/prometheus/prometheus.yml
+      - name: Build project-owned Airflow image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.airflow
+          push: false
+          tags: mri-airflow:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build project-owned Superset image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.superset
+          push: false
+          tags: mri-superset:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build project-owned metrics exporter image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.metrics
+          push: false
+          tags: mri-metrics:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

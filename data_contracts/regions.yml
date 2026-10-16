@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# Data contract: regions
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# Policy: see data_contracts/README.md. Contract version is semantic.
+# ---------------------------------------------------------------------------
+id: regions
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Moroccan regions with normalised demand weights."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [region_id]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: region_id, type: string, required: true, nullable: false, description: "Region code, e.g. R01"}
+  - {name: region_name, type: string, required: true, nullable: false, description: "Official Moroccan region name"}
+  - {name: demand_weight, type: number, required: true, nullable: false, description: "Normalised demand weight in [0, 1]"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "region_id is unique and not null"
+    - "demand_weight is between 0 and 1"
+sla:
+  consumers: [bronze, staging]

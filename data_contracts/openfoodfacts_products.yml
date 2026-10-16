@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# Data contract: openfoodfacts_products
+# External source: Open Food Facts v3 API, stored verbatim under
+# raw_external/ by `apps.ingestion external` (Phase 05) and flattened into
+# Bronze rows by src/mri/ingestion/external_bronze.py (Phase 07).
+# One row = one fetched barcode (found or not found); enrichment only, it
+# never overwrites the internal products contract (see ADR-002/ADR-005).
+# ---------------------------------------------------------------------------
+id: openfoodfacts_products
+version: 1.0.0
+owner: external-api
+source: "Open Food Facts API v3 (https://world.openfoodfacts.org/api/v3/product/{barcode}.json)"
+description: "External product-catalog enrichment keyed by barcode (raw response normalized to flat rows)."
+format:
+  types: [json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [external_product_id]
+  business: [mapping_status]
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: external_product_id, type: string, required: true, nullable: false, description: "Exact barcode (8-14 digits) from the mapping sidecar or payload code"}
+  - {name: internal_product_id, type: string, required: true, nullable: true, description: "Linked internal product_id on exact barcode match (null = NEW/UNMATCHED)"}
+  - {name: mapping_status, type: string, required: true, nullable: false, description: "MATCHED, NEW or UNMATCHED"}
+  - {name: retrieval_time, type: string, required: true, nullable: false, description: "metadata.retrieved_at of the raw response (ISO-8601)"}
+  - {name: product_name, type: string, required: true, nullable: true, description: "Product name as published by Open Food Facts"}
+  - {name: brands, type: string, required: true, nullable: true, description: "Brand list, comma separated"}
+  - {name: quantity, type: string, required: true, nullable: true, description: "Declared quantity as text, e.g. '400 g e'"}
+  - {name: categories, type: string, required: true, nullable: true, description: "Category labels, comma separated"}
+  - {name: nutriscore_grade, type: string, required: true, nullable: true, description: "Nutri-Score grade a-e (null when not computed)"}
+  - {name: nova_group, type: integer, required: true, nullable: true, description: "NOVA food-processing group 1-4 (null when unknown)"}
+  - {name: image_url, type: string, required: true, nullable: true, description: "Front image URL (null when absent)"}
+  - {name: countries, type: string, required: true, nullable: true, description: "Countries where the product is sold, comma separated"}
+  - {name: lang, type: string, required: true, nullable: true, description: "Main language code of the entry, e.g. fr"}
+  - {name: ingredients_text, type: string, required: true, nullable: true, description: "Ingredient list as text (may be empty)"}
+  - {name: allergens, type: string, required: true, nullable: true, description: "Allergen labels, comma separated"}
+  - {name: product_quantity, type: number, required: true, nullable: true, description: "Declared pack quantity in grams (null when absent)"}
+  - {name: energy_kcal_100g, type: number, required: true, nullable: true, description: "Energy per 100 g in kcal (null when absent)"}
+  - {name: fat_100g, type: number, required: true, nullable: true, description: "Fat per 100 g in grams (null when absent)"}
+  - {name: sugars_100g, type: number, required: true, nullable: true, description: "Sugars per 100 g in grams (null when absent)"}
+  - {name: proteins_100g, type: number, required: true, nullable: true, description: "Proteins per 100 g in grams (null when absent)"}
+  - {name: salt_100g, type: number, required: true, nullable: true, description: "Salt per 100 g in grams (null when absent)"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06/07).
+  declared:
+    - "external_product_id is unique and not null"
+    - "external_product_id matches ^[0-9]{8,14}$"
+    - "mapping_status in {MATCHED, NEW, UNMATCHED}"
+    - "nova_group between 1 and 4"
+    - "energy_kcal_100g between 0 and 900"
+    - "fat_100g between 0 and 100"
+    - "sugars_100g between 0 and 100"
+    - "proteins_100g between 0 and 100"
+    - "salt_100g between 0 and 100"
+sla:
+  consumers: [bronze, staging]

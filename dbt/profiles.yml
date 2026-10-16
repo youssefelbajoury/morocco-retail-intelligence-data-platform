@@ -1,0 +1,25 @@
+# dbt connection profile for the Morocco Retail Intelligence platform.
+#
+# Credentials are resolved from the environment (DBT_TARGET_*), never from
+# this file. Run dbt through the repository wrapper (`python -m apps.dbt ...`)
+# which injects DBT_TARGET_* from `.env`, or export the variables yourself:
+#
+#   DBT_TARGET_HOST / DBT_TARGET_PORT / DBT_TARGET_DB
+#   DBT_TARGET_USER / DBT_TARGET_PASSWORD / DBT_TARGET_SSLMODE
+#
+# DBT_TARGET_PASSWORD intentionally has NO default: a missing password must
+# fail loudly instead of silently attempting an anonymous connection.
+
+mri:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_TARGET_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_TARGET_PORT', '5433') | int }}"
+      dbname: "{{ env_var('DBT_TARGET_DB', 'retail') }}"
+      user: "{{ env_var('DBT_TARGET_USER', 'retail_app') }}"
+      password: "{{ env_var('DBT_TARGET_PASSWORD') }}"
+      sslmode: "{{ env_var('DBT_TARGET_SSLMODE', 'prefer') }}"
+      schema: dbt
+      threads: 4

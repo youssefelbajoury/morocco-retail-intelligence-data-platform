@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Data contract: open_meteo_history
+# External source: Open-Meteo Archive API (ERA5/IFS reanalysis), stored
+# verbatim under raw_external/ by `apps.ingestion external` (Phase 05) and
+# flattened into Bronze rows by src/mri/ingestion/external_bronze.py (Phase 07).
+# One row = one observed day for one project region.
+# ---------------------------------------------------------------------------
+id: open_meteo_history
+version: 1.0.0
+owner: external-api
+source: "Open-Meteo Archive API (https://archive-api.open-meteo.com/v1/archive)"
+description: "Observed daily weather per project region (raw response normalized to flat rows)."
+format:
+  types: [json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [region_id, observation_date]
+  business: [city]
+freshness:
+  frequency: daily
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: region_id, type: string, required: true, nullable: false, description: "Project region id from the request context, e.g. R01"}
+  - {name: region_name, type: string, required: true, nullable: false, description: "Official Moroccan region name"}
+  - {name: city, type: string, required: true, nullable: false, description: "Chief city the coordinates belong to"}
+  - {name: timezone, type: string, required: true, nullable: false, description: "Requested timezone, e.g. Africa/Casablanca"}
+  - {name: latitude, type: number, required: true, nullable: false, description: "WGS84 latitude of the requested location"}
+  - {name: longitude, type: number, required: true, nullable: false, description: "WGS84 longitude of the requested location"}
+  - {name: observation_date, type: date, required: true, nullable: false, description: "Observed day (ISO-8601 yyyy-mm-dd)"}
+  - {name: data_type, type: string, required: true, nullable: false, description: "Payload data type: historical"}
+  - {name: retrieval_time, type: string, required: true, nullable: false, description: "metadata.retrieved_at of the raw response (ISO-8601)"}
+  - {name: weather_code, type: integer, required: true, nullable: true, description: "WMO weather code (null when the API omits the value)"}
+  - {name: temperature_2m_max, type: number, required: true, nullable: true, description: "Daily maximum 2m temperature in degrees Celsius"}
+  - {name: temperature_2m_min, type: number, required: true, nullable: true, description: "Daily minimum 2m temperature in degrees Celsius"}
+  - {name: precipitation_sum, type: number, required: true, nullable: true, description: "Daily precipitation sum in mm"}
+  - {name: precipitation_hours, type: number, required: true, nullable: true, description: "Hours with precipitation in the day (0-24)"}
+  - {name: wind_speed_10m_max, type: number, required: true, nullable: true, description: "Daily maximum 10m wind speed in km/h"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06/07).
+  declared:
+    - "region_id and observation_date are unique and not null"
+    - "observation_date between 1940-01-01 and 2100-12-31"
+    - "latitude between -90 and 90"
+    - "longitude between -180 and 180"
+    - "temperature_2m_max between -80 and 60"
+    - "temperature_2m_min between -80 and 60"
+    - "temperature_2m_max >= temperature_2m_min"
+    - "precipitation_sum >= 0"
+    - "precipitation_hours between 0 and 24"
+    - "wind_speed_10m_max >= 0"
+    - "weather_code between 0 and 99"
+    - "region_id exists in regions"
+sla:
+  consumers: [bronze, staging]

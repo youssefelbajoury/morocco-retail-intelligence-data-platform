@@ -1,0 +1,17 @@
+# Grafana dashboard provider (PHASE 19).
+# Loads every JSON dashboard mounted at /var/lib/grafana/dashboards into the
+# "MRI" folder.
+
+apiVersion: 1
+
+providers:
+  - name: mri
+    orgId: 1
+    folder: MRI
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

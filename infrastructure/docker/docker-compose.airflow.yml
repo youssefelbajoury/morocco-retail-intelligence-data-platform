@@ -1,0 +1,196 @@
+# Morocco Retail Intelligence — Apache Airflow orchestration layer (PHASE 11).
+#
+# Extends the base stack (infrastructure/docker/docker-compose.yml) with the
+# official Airflow 3.3.2 containers. ALWAYS pass BOTH files in one project
+# from the repository root:
+#
+#   docker compose --env-file .env \
+#     -f infrastructure/docker/docker-compose.yml \
+#     -f infrastructure/docker/docker-compose.airflow.yml up -d
+#
+# Architecture — lightest official deployment (LocalExecutor), documented in
+# docs/orchestration/airflow.md and ADR-009:
+#
+#   airflow-init          one-shot: DB migrations + admin user creation
+#   airflow-postgres      dedicated Airflow METADATA database (never retail)
+#   airflow-apiserver     UI (:8080) + REST API + task Execution API
+#   airflow-scheduler     schedules AND executes tasks in-process (LocalExecutor)
+#   airflow-dag-processor parses airflow/dags/*.py
+#   airflow-cli           on-demand CLI (profile: debug), never auto-starts
+#
+# Deliberately NOT included: Redis, Celery worker, triggerer, flower — none
+# are required for a LocalExecutor deployment without deferrable operators.
+#
+# Addressing: everything runs on the shared `mri-net` network and talks to
+# services by service name (postgres, minio, airflow-postgres, ...). The
+# application overrides below (POSTGRES_HOST, MINIO_ENDPOINT, ...) win over
+# the mounted repository .env, which points at localhost from the host's
+# perspective.
+
+x-airflow-common: &airflow-common
+  image: mri-airflow:3.3.2
+  build:
+    context: ../..
+    dockerfile: infrastructure/docker/Dockerfile.airflow
+  # Explicit public resolvers: Docker Desktop's embedded resolver suffered a
+  # transient outage during Phase 11 acceptance (all external lookups failed
+  # with Errno -2 for ~70 minutes), which is why ingest_external failed.
+  dns:
+    - 8.8.8.8
+    - 1.1.1.1
+  environment: &airflow-common-env
+    # --- Airflow core: lightest official topology ---
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+    AIRFLOW__CORE__PARALLELISM: "4"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "4"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
+    # --- Dedicated metadata database (never the retail warehouse) ---
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@airflow-postgres:5432/${AIRFLOW_POSTGRES_DB}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET}
+    AIRFLOW__API_AUTH__JWT_ISSUER: airflow
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # --- CLI / API authentication (airflow dags trigger, ...) ---
+    AIRFLOW_USERNAME: ${AIRFLOW_ADMIN_USER}
+    AIRFLOW_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+    # --- Repository application overrides (in-network service names) ---
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    MINIO_ENDPOINT: http://minio:9000
+    # --- DAG configuration (read at parse time by airflow/dags/*.py) ---
+    MRI_REPO_ROOT: /opt/airflow/mri
+    MRI_PYTHON: /opt/venv/bin/python
+    MRI_DAG_SCHEDULE: ${MRI_DAG_SCHEDULE:-0 4 * * *}
+  volumes:
+    - ../../airflow/dags:/opt/airflow/dags
+    - ../../airflow/logs:/opt/airflow/logs
+    - ../..:/opt/airflow/mri
+  networks:
+    - mri
+
+services:
+  airflow-postgres:
+    image: postgres:16-alpine
+    container_name: mri-airflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AIRFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${AIRFLOW_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD}
+    ports:
+      # Host-local only (loopback) — see docs/security/security-hardening.md.
+      - "127.0.0.1:${AIRFLOW_POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mri
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -euo pipefail
+        echo "Airflow version:"
+        /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    container_name: mri-airflow-apiserver
+    ports:
+      # Host-local only (loopback) — see docs/security/security-hardening.md.
+      - "127.0.0.1:${AIRFLOW_WEBSERVER_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    container_name: mri-airflow-scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      airflow-apiserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    container_name: mri-airflow-dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  airflow-cli:
+    <<: *airflow-common
+    container_name: mri-airflow-cli
+    profiles:
+      - debug
+    command:
+      - bash
+      - -c
+      - airflow
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  airflow_postgres_data:
+    name: mri-airflow-postgres-data
+
+networks:
+  mri:
+    name: mri-net
+    driver: bridge

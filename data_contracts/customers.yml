@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# Data contract: customers
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# PII-free simulated data (no real personal information).
+# ---------------------------------------------------------------------------
+id: customers
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Simulated customers with region, segment and loyalty attributes."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [customer_id]
+  business: []
+freshness:
+  frequency: static
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: customer_id, type: string, required: true, nullable: false, description: "Customer code, e.g. CU000001"}
+  - {name: signup_date, type: date, required: true, nullable: false, description: "Signup date (ISO-8601 yyyy-mm-dd)"}
+  - {name: region_id, type: string, required: true, nullable: false, description: "FK -> regions.region_id"}
+  - {name: birth_year, type: integer, required: true, nullable: false, description: "Year of birth"}
+  - {name: gender, type: string, required: true, nullable: false, description: "One of: F, M, U"}
+  - {name: segment, type: string, required: true, nullable: false, description: "One of: jeune, famille, senior, actif"}
+  - {name: loyalty_tier, type: string, required: true, nullable: false, description: "One of: bronze, silver, gold, platinum"}
+  - {name: preferred_channel_id, type: string, required: true, nullable: false, description: "FK -> channels.channel_id"}
+  - {name: is_active, type: boolean, required: true, nullable: false, description: "Active-customer flag"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "customer_id is unique and not null"
+    - "birth_year between 1900 and 2024"
+    - "gender in {F, M, U}"
+    - "loyalty_tier in {bronze, silver, gold, platinum}"
+    - "region_id exists in regions"
+    - "preferred_channel_id exists in channels"
+sla:
+  consumers: [bronze, staging]

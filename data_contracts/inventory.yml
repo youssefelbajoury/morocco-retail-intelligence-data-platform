@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# Data contract: inventory
+# Produced by the deterministic synthetic generator (apps.data_generator).
+# ---------------------------------------------------------------------------
+id: inventory
+version: 1.0.0
+owner: synthetic-generator
+source: "mri.synthetic generator (apps.data_generator)"
+description: "Periodic stock snapshots per store and product."
+format:
+  types: [csv, json]
+  encoding: utf-8
+  delimiter: ","
+keys:
+  primary: [snapshot_date, store_id, product_id]
+  business: []
+freshness:
+  frequency: weekly
+  max_age: null
+volume:
+  min_rows: 1
+  max_rows: null
+columns:
+  - {name: snapshot_date, type: date, required: true, nullable: false, description: "Snapshot date (ISO-8601 yyyy-mm-dd)"}
+  - {name: store_id, type: string, required: true, nullable: false, description: "FK -> stores.store_id"}
+  - {name: product_id, type: string, required: true, nullable: false, description: "FK -> products.product_id"}
+  - {name: quantity_on_hand, type: integer, required: true, nullable: false, description: "Units on hand (>= 0)"}
+  - {name: stock_value_mad, type: number, required: true, nullable: false, description: "Stock value in MAD (>= 0)"}
+  - {name: stock_status, type: string, required: true, nullable: false, description: "One of: in_stock, low, out_of_stock"}
+quality:
+  # Enforced by the Great Expectations bronze gate (Phase 06); not checked in Phase 04.
+  declared:
+    - "composite key (snapshot_date, store_id, product_id) is unique"
+    - "quantity_on_hand >= 0"
+    - "stock_value_mad >= 0"
+    - "stock_status in {in_stock, low, out_of_stock}"
+sla:
+  consumers: [bronze, staging]
